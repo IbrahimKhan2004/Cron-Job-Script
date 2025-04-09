@@ -13,7 +13,7 @@ URLS = [
     "https://newcodex-p0tx.onrender.com/",
     "https://previous-constance-alexpinaorg-7b7546a0.koyeb.app/",
     "https://stream-eliteflixmedia.koyeb.app/",
-    "https://liquid-pooh-jahahagwksj-4d9ff8e1.koyeb.app/"
+    "regional-caryl-jahahagwksj-90803a67.koyeb.app/"
 ]
 
 INTERVAL_SECONDS = 5
