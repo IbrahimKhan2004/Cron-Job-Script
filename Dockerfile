@@ -8,4 +8,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 EXPOSE 8080
 
-CMD ["gunicorn", "-b", "0.0.0.0:8080", "app:app"]
+#Ensure the start script is executable
+RUN chmod +x start.sh
+
+# Command to run when starting the container
+CMD ["./start.sh"]
+# --- END OF UPDATED FILE Dockerfile ---
