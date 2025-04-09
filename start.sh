@@ -1,2 +1,2 @@
 #!/bin/bash
-gunicorn app:app & python3 main.py
+gunicorn main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8080
