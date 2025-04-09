@@ -1,2 +1,2 @@
 #!/bin/bash
-gunicorn app:app & python main.py
+gunicorn app:app & python3 main.py
