@@ -1,6 +1,7 @@
 import asyncio
 import aiohttp
 from fastapi import FastAPI
+from contextlib import asynccontextmanager
 
 URLS = [
     "https://forward-n6az.onrender.com/",
@@ -14,13 +15,6 @@ URLS = [
 ]
 
 INTERVAL_SECONDS = 5
-
-app = FastAPI()
-
-@app.get("/")
-@app.get("/health")
-def health_check():
-    return {"status": "ok", "by": "Sahil Nolia"}
 
 async def ping(session, url):
     try:
@@ -36,6 +30,15 @@ async def ping_forever():
             await asyncio.gather(*tasks)
             await asyncio.sleep(INTERVAL_SECONDS)
 
-@app.on_event("startup")
-async def on_startup():
-    asyncio.create_task(ping_forever())
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task = asyncio.create_task(ping_forever())
+    yield
+    task.cancel()
+
+app = FastAPI(lifespan=lifespan)
+
+@app.get("/")
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
