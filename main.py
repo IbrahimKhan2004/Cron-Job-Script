@@ -1,9 +1,6 @@
 import asyncio
 import aiohttp
 from fastapi import FastAPI
-import uvicorn
-
-app = FastAPI()
 
 URLS = [
     "https://forward-n6az.onrender.com/",
@@ -13,15 +10,17 @@ URLS = [
     "https://newcodex-p0tx.onrender.com/",
     "https://previous-constance-alexpinaorg-7b7546a0.koyeb.app/",
     "https://stream-eliteflixmedia.koyeb.app/",
-    "regional-caryl-jahahagwksj-90803a67.koyeb.app/"
+    "https://regional-caryl-jahahagwksj-90803a67.koyeb.app/"
 ]
 
 INTERVAL_SECONDS = 5
 
+app = FastAPI()
+
 @app.get("/")
 @app.get("/health")
 def health_check():
-    return {"status": "ok"}
+    return {"status": "ok", "by": "Sahil Nolia"}
 
 async def ping(session, url):
     try:
@@ -37,10 +36,6 @@ async def ping_forever():
             await asyncio.gather(*tasks)
             await asyncio.sleep(INTERVAL_SECONDS)
 
-# Background task runner
 @app.on_event("startup")
-async def startup_event():
+async def on_startup():
     asyncio.create_task(ping_forever())
-
-if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8080)
