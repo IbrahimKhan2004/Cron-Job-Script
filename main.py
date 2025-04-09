@@ -12,7 +12,8 @@ URLS = [
     "https://newcodex-p0tx.onrender.com/",
     "https://previous-constance-alexpinaorg-7b7546a0.koyeb.app/",
     "https://stream-eliteflixmedia.koyeb.app/",
-    "https://regional-caryl-jahahagwksj-90803a67.koyeb.app/"
+    "https://regional-caryl-jahahagwksj-90803a67.koyeb.app/",
+    "https://residential-tiffany-streamppl-ca1d6f39.koyeb.app/"
 ]
 
 # Extract hostnames for port monitoring (assuming port 8080)
