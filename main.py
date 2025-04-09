@@ -1,5 +1,9 @@
 import asyncio
 import aiohttp
+from fastapi import FastAPI
+import uvicorn
+
+app = FastAPI()
 
 URLS = [
     "https://forward-n6az.onrender.com/",
@@ -14,6 +18,11 @@ URLS = [
 
 INTERVAL_SECONDS = 5
 
+@app.get("/")
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
 async def ping(session, url):
     try:
         async with session.get(url, timeout=5) as resp:
@@ -21,12 +30,17 @@ async def ping(session, url):
     except Exception as e:
         print(f"Failed to ping {url}: {e}")
 
-async def main():
+async def ping_forever():
     async with aiohttp.ClientSession() as session:
         while True:
             tasks = [ping(session, url) for url in URLS]
             await asyncio.gather(*tasks)
             await asyncio.sleep(INTERVAL_SECONDS)
 
+# Background task runner
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(ping_forever())
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    uvicorn.run("main:app", host="0.0.0.0", port=8080)
