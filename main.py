@@ -5,16 +5,19 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
 URLS = [
-    "https://forward-n6az.onrender.com/",
-    "https://newcodex-az1m.onrender.com/",
-    "https://main-2tft.onrender.com/",
-    "https://gemini-r0rz.onrender.com/",
-    "https://newcodex-p0tx.onrender.com/",
-    "https://previous-constance-alexpinaorg-7b7546a0.koyeb.app/",
-    "https://stream-eliteflixmedia.koyeb.app/",
-    "https://regional-caryl-jahahagwksj-90803a67.koyeb.app/",
-    "https://residential-tiffany-streamppl-ca1d6f39.koyeb.app/",
-    "https://used-kiah-ironblood-6f196129.koyeb.app/"
+    "https://unpleasant-tapir-alexpinaorg-ee539153.koyeb.app/",
+    "https://bot-pl0g.onrender.com/",
+    "https://brilliant-celestyn-mustafaorgka-608d1ba4.koyeb.app/",
+    "https://fsb-latest-yymc.onrender.com/",
+    "https://gemini-5re4.onrender.com/",
+    "https://late-alameda-streamppl-f38f75e1.koyeb.app/",
+    "https://main-diup.onrender.com/",
+    "https://marxist-theodosia-ironblood-b363735f.koyeb.app/",
+    "https://mltb-x2pj.onrender.com/",
+    "https://neutral-ralina-alwuds-cc44c37a.koyeb.app/"
+    "https://ssr-fuz6.onrender.com",
+    "https://unaware-joanne-eliteflixmedia-976ac949.koyeb.app/"
+    "https://worthwhile-gaynor-nternetke-5a83f931.koyeb.app/"
 ]
 
 # Extract hostnames for port monitoring (assuming port 8080)
