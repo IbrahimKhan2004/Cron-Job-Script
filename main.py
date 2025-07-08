@@ -14,10 +14,11 @@ URLS = [
     "https://main-diup.onrender.com/",
     "https://marxist-theodosia-ironblood-b363735f.koyeb.app/",
     "https://mltb-x2pj.onrender.com/",
-    "https://neutral-ralina-alwuds-cc44c37a.koyeb.app/"
+    "https://neutral-ralina-alwuds-cc44c37a.koyeb.app/",
     "https://ssr-fuz6.onrender.com",
-    "https://unaware-joanne-eliteflixmedia-976ac949.koyeb.app/"
-    "https://worthwhile-gaynor-nternetke-5a83f931.koyeb.app/"
+    "https://unaware-joanne-eliteflixmedia-976ac949.koyeb.app/",
+    "https://worthwhile-gaynor-nternetke-5a83f931.koyeb.app/",
+    "https://cronjob-sxmj.onrender.com",
 ]
 
 # Extract hostnames for port monitoring (assuming port 8080)
