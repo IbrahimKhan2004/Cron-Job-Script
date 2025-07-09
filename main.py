@@ -19,6 +19,8 @@ URLS = [
     "https://unaware-joanne-eliteflixmedia-976ac949.koyeb.app/",
     "https://worthwhile-gaynor-nternetke-5a83f931.koyeb.app/",
     "https://cronjob-sxmj.onrender.com",
+    "https://native-darryl-jahahagwksj-902a75ed.koyeb.app/",
+
 ]
 
 # Extract hostnames for port monitoring (assuming port 8080)
