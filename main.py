@@ -20,6 +20,7 @@ URLS = [
     "https://worthwhile-gaynor-nternetke-5a83f931.koyeb.app/",
     "https://cronjob-sxmj.onrender.com",
     "https://native-darryl-jahahagwksj-902a75ed.koyeb.app/",
+    "https://prerss.onrender.com/skymovieshd/latest-updated-movies",
 
 ]
 
