@@ -21,6 +21,7 @@ URLS = [
     "https://cronjob-sxmj.onrender.com",
     "https://native-darryl-jahahagwksj-902a75ed.koyeb.app/",
     "https://prerss.onrender.com/skymovieshd/latest-updated-movies",
+    "https://gofile-spht.onrender.com",
 
 ]
 
