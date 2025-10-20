@@ -25,6 +25,7 @@ URLS = [
     "https://gofile-g1dl.onrender.com",
     "https://regex-k9as.onrender.com",
     "https://namechanged.onrender.com",
+    "https://telegram-stremio-v9ur.onrender.com",
 
 ]
 
