@@ -1,7 +1,6 @@
 """
 app.py — CronPulse FastAPI Application
 Manages dynamic cron jobs via MongoDB + APScheduler.
-Legacy URL monitoring is handled separately in main.py.
 """
 
 import asyncio
@@ -18,9 +17,8 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from motor.motor_asyncio import AsyncIOMotorClient
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
-
 
 # ─── Settings ─────────────────────────────────────────────────────────────────
 
@@ -33,7 +31,6 @@ class Settings(BaseSettings):
         env_file = ".env"
         extra = "ignore"
 
-
 settings = Settings()
 templates = Jinja2Templates(directory="templates")
 
@@ -42,7 +39,6 @@ templates = Jinja2Templates(directory="templates")
 scheduler = AsyncIOScheduler()
 db_client: Optional[AsyncIOMotorClient] = None
 db = None
-
 
 # ─── Job runner ───────────────────────────────────────────────────────────────
 
@@ -75,7 +71,6 @@ async def run_cron_job(job_id: str, url: str) -> None:
         if db is not None:
             await db.logs.insert_one(log_entry)
 
-
 # ─── Lifespan (startup / shutdown) ────────────────────────────────────────────
 
 @asynccontextmanager
@@ -90,8 +85,20 @@ async def lifespan(app: FastAPI):
     await db.logs.create_index([("timestamp", -1)])
 
     # One-time migration of legacy URLs
-    legacy_urls = ['https://unpleasant-tapir-alexpinaorg-ee539153.koyeb.app/', 'https://bot-pl0g.onrender.com/', 'https://brilliant-celestyn-mustafaorgka-608d1ba4.koyeb.app/', 'https://fsb-latest-yymc.onrender.com/', 'https://gemini-5re4.onrender.com/', 'https://late-alameda-streamppl-f38f75e1.koyeb.app/', 'https://main-diup.onrender.com/', 'https://marxist-theodosia-ironblood-b363735f.koyeb.app/', 'https://mltb-x2pj.onrender.com/', 'https://neutral-ralina-alwuds-cc44c37a.koyeb.app/', 'https://ssr-fuz6.onrender.com', 'https://unaware-joanne-eliteflixmedia-976ac949.koyeb.app/', 'https://worthwhile-gaynor-nternetke-5a83f931.koyeb.app/', 'https://cronjob-sxmj.onrender.com', 'https://native-darryl-jahahagwksj-902a75ed.koyeb.app/', 'https://prerss.onrender.com/skymovieshd/latest-updated-movies', 'https://gofile-spht.onrender.com', 'https://gofile-g1dl.onrender.com', 'https://regex-k9as.onrender.com', 'https://namechanged.onrender.com', 'https://telegram-stremio-v9ur.onrender.com']
-    print(f"[APP] checking migration for {len(legacy_urls)} legacy URLs...")
+    legacy_urls = [
+        "https://unpleasant-tapir-alexpinaorg-ee539153.koyeb.app/", "https://bot-pl0g.onrender.com/",
+        "https://brilliant-celestyn-mustafaorgka-608d1ba4.koyeb.app/", "https://fsb-latest-yymc.onrender.com/",
+        "https://gemini-5re4.onrender.com/", "https://late-alameda-streamppl-f38f75e1.koyeb.app/",
+        "https://main-diup.onrender.com/", "https://marxist-theodosia-ironblood-b363735f.koyeb.app/",
+        "https://mltb-x2pj.onrender.com/", "https://neutral-ralina-alwuds-cc44c37a.koyeb.app/",
+        "https://ssr-fuz6.onrender.com", "https://unaware-joanne-eliteflixmedia-976ac949.koyeb.app/",
+        "https://worthwhile-gaynor-nternetke-5a83f931.koyeb.app/", "https://cronjob-sxmj.onrender.com",
+        "https://native-darryl-jahahagwksj-902a75ed.koyeb.app/", "https://prerss.onrender.com/skymovieshd/latest-updated-movies",
+        "https://gofile-spht.onrender.com", "https://gofile-g1dl.onrender.com", "https://regex-k9as.onrender.com",
+        "https://namechanged.onrender.com", "https://telegram-stremio-v9ur.onrender.com"
+    ]
+
+    print(f"[APP] Checking migration for {len(legacy_urls)} legacy URLs...")
     for url in legacy_urls:
         exists = await db.jobs.find_one({"url": url})
         if not exists:
@@ -113,7 +120,8 @@ async def lifespan(app: FastAPI):
         if url and interval:
             _schedule_job(job_id, url, interval)
         else:
-            print(f"[APP] WARNING: Skipping job {job_id} due to missing fields (url={url}, interval={interval})")
+            print(f"[APP] WARNING: Skipping job {job_id} due to missing fields")
+
     scheduler.start()
     print(f"[APP] Scheduler started with {len(scheduler.get_jobs())} job(s).")
 
@@ -122,7 +130,6 @@ async def lifespan(app: FastAPI):
     scheduler.shutdown(wait=False)
     db_client.close()
     print("[APP] Shutdown complete.")
-
 
 # ─── Scheduler helpers ────────────────────────────────────────────────────────
 
@@ -136,13 +143,11 @@ def _schedule_job(job_id: str, url: str, interval_seconds: int) -> None:
         replace_existing=True,
     )
 
-
 def _unschedule_job(job_id: str) -> None:
     try:
         scheduler.remove_job(job_id)
     except Exception:
         pass
-
 
 # ─── FastAPI app ──────────────────────────────────────────────────────────────
 
@@ -153,7 +158,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-
 # ─── Pydantic models ──────────────────────────────────────────────────────────
 
 class JobIn(BaseModel):
@@ -161,12 +165,10 @@ class JobIn(BaseModel):
     name: str = Field(..., min_length=1, max_length=80, description="Human-readable job name")
     interval_seconds: int = Field(..., gt=0, description="Interval in seconds (min 1)")
 
-
 class JobUpdate(BaseModel):
     url: Optional[str] = None
     name: Optional[str] = Field(None, min_length=1, max_length=80)
     interval_seconds: Optional[int] = Field(None, gt=0)
-
 
 # ─── Routes ───────────────────────────────────────────────────────────────────
 
@@ -174,11 +176,9 @@ class JobUpdate(BaseModel):
 async def index(request: Request):
     return templates.TemplateResponse(request, "index.html")
 
-
 @app.get("/health")
 def health_check():
     return {"status": "ok", "jobs": len(scheduler.get_jobs())}
-
 
 # Jobs CRUD ────────────────────────────────────────────────────────────────────
 
@@ -194,11 +194,10 @@ async def get_jobs():
             "name": doc.get("name", ""),
             "url": doc.get("url", ""),
             "interval_seconds": doc.get("interval_seconds", 0),
-            "created_at": doc.get("created_at", "").isoformat() if doc.get("created_at") else None,
+            "created_at": doc.get("created_at").isoformat() if doc.get("created_at") else None,
             "next_run": next_run,
         })
     return jobs
-
 
 @app.post("/api/jobs", status_code=201)
 async def create_job(job: JobIn):
@@ -214,36 +213,30 @@ async def create_job(job: JobIn):
     _schedule_job(job_id, job.url, job.interval_seconds)
     return {"id": job_id, **job_dict, "created_at": now.isoformat()}
 
-
 @app.delete("/api/jobs/{job_id}")
 async def delete_job(job_id: str):
     try:
-        obj_id = obj_id
-    except Exception:
+        obj_id = ObjectId(job_id)
+    except Exception as e:
+        print(f"[API] Invalid ID format: {job_id} Error: {e}")
         raise HTTPException(status_code=400, detail="Invalid job ID format")
-    try:
-        obj_id = obj_id
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid job ID format")
+
     result = await db.jobs.delete_one({"_id": obj_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Job not found")
-    # Also delete all logs for this job
+
     await db.logs.delete_many({"job_id": job_id})
     _unschedule_job(job_id)
     return {"status": "deleted"}
 
-
 @app.patch("/api/jobs/{job_id}")
 async def update_job(job_id: str, job_update: JobUpdate):
     try:
-        obj_id = obj_id
-    except Exception:
+        obj_id = ObjectId(job_id)
+    except Exception as e:
+        print(f"[API] Invalid ID format: {job_id} Error: {e}")
         raise HTTPException(status_code=400, detail="Invalid job ID format")
-    try:
-        obj_id = obj_id
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid job ID format")
+
     existing = await db.jobs.find_one({"_id": obj_id})
     if not existing:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -254,35 +247,30 @@ async def update_job(job_id: str, job_update: JobUpdate):
 
     new_url = update_data.get("url", existing.get("url", ""))
     new_interval = update_data.get("interval_seconds", existing.get("interval_seconds", 0))
-    _schedule_job(job_id, new_url, new_interval)
+    if new_url and new_interval > 0:
+        _schedule_job(job_id, new_url, new_interval)
     return {"status": "updated"}
-
 
 # Logs ────────────────────────────────────────────────────────────────────────
 
 @app.get("/api/logs")
 async def get_all_logs(limit: int = 100):
-    """Get most recent logs across all jobs."""
     logs = []
     async for doc in db.logs.find().sort("timestamp", -1).limit(limit):
         logs.append(_serialize_log(doc))
     return logs
 
-
 @app.get("/api/jobs/{job_id}/logs")
 async def get_job_logs(job_id: str, limit: int = 50):
-    """Get logs for a specific job."""
     logs = []
     async for doc in db.logs.find({"job_id": job_id}).sort("timestamp", -1).limit(limit):
         logs.append(_serialize_log(doc))
     return logs
 
-
 @app.delete("/api/jobs/{job_id}/logs")
 async def clear_job_logs(job_id: str):
     result = await db.logs.delete_many({"job_id": job_id})
     return {"deleted": result.deleted_count}
-
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -297,9 +285,6 @@ def _serialize_log(doc: dict) -> dict:
         "response_preview": doc.get("response_preview", ""),
         "timestamp": doc.get("timestamp").isoformat() if doc.get("timestamp") else None,
     }
-
-
-# ─── Entry point ──────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     import uvicorn

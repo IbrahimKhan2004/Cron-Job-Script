@@ -659,7 +659,7 @@ async function fetchJobs() {
         <td><div class="job-name">${escHtml(j.name || '—')}</div></td>
         <td class="url-cell"><a href="${escHtml(j.url)}" target="_blank" title="${escHtml(j.url)}"><span class="url-truncate">${escHtml(j.url)}</span></a></td>
         <td><span class="badge badge-blue">${fmtInterval(j.interval_seconds)}</span></td>
-        <td><span class="next-run">${fmtRelTime(j.next_run)}</span></td>
+        <td><span class="next-run" data-ts="${j.next_run || ''}">${fmtRelTime(j.next_run)}</span></td>
         <td>
           <div class="actions-cell">
             <button class="btn btn-ghost btn-sm btn-icon" title="View Logs" onclick="openJobLogs('${j.id}','${escHtml(j.name || j.url)}')">
@@ -707,6 +707,28 @@ async function createJob() {
 // ── Delete Job ─────────────────────────────────────────────────────────────
 async function deleteJob(id, label) {
   if (!confirm(`Delete job "${label}"?
+This will also delete all its logs.`)) return;
+  try {
+    await apiCall(`/api/jobs/${id}`, { method: 'DELETE' });
+    toast('Job deleted', 'success');
+    await fetchJobs();
+    await fetchLogs();
+  } catch (e) {
+    toast('Network error (Check console)', 'error');
+    console.error(e);
+  }
+}"?
+This will also delete all its logs.`)) return;
+  try {
+    await apiCall(`/api/jobs/${id}`, { method: 'DELETE' });
+    toast('Job deleted', 'success');
+    await fetchJobs();
+    await fetchLogs();
+  } catch (e) {
+    toast('Network error (Check console)', 'error');
+    console.error(e);
+  }
+}"?
 This will also delete all its logs.`)) return;
   try {
     await apiCall(`/api/jobs/${id}`, { method: 'DELETE' });
@@ -878,9 +900,18 @@ document.getElementById('logsDrawer').addEventListener('click', e => { if (e.tar
 checkHealth();
 fetchJobs();
 fetchLogs();
-setInterval(fetchJobs, 20000);
-setInterval(fetchLogs, 15000);
+setInterval(fetchJobs, 5000);
+setInterval(fetchLogs, 5000);
 setInterval(checkHealth, 30000);
+
+function updateRelTimes() {
+  document.querySelectorAll('.next-run').forEach(el => {
+    const iso = el.getAttribute('data-ts');
+    if (iso) el.textContent = fmtRelTime(iso);
+  });
+}
+setInterval(updateRelTimes, 1000);
+
 </script>
 </body>
 </html>
