@@ -53,9 +53,3 @@ To run this project, you will need to add the following environment variables:
 This project is pre-configured for deployment on Render or Heroku.
 -   The `Procfile` defines the entry point: `web: python3 main.py`.
 -   Ensure you set the `MONGODB_URI` in your environment settings.
-
-## 🛡️ Non-Regressive Guarantee
-Existing logic for the original list of URLs is maintained in `monitor_all()`. These tasks run independently of the dynamic scheduler to ensure zero downtime for legacy integrations.
-
----
-⚡ *Built with precision by Sahil Nolia & Jules*
