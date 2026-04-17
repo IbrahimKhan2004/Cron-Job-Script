@@ -227,16 +227,16 @@
         <table>
           <thead>
             <tr>
-              <th>Name</th>
+                            <th>Name</th>
               <th>Target URL</th>
               <th>Interval</th>
-              <th>SSL</th>
               <th>Next Ping</th>
+              <th>SSL</th>
               <th style="text-align:right">Actions</th>
             </tr>
           </thead>
           <tbody id="jobsTable">
-            <tr><td colspan="5"><div class="empty-state">Loading jobs...</div></td></tr>
+            <tr><td colspan="6"><div class="empty-state">Loading jobs...</div></td></tr>
           </tbody>
         </table>
       </div>
@@ -440,7 +440,7 @@ async function fetchJobs() {
     const tJ = document.getElementById('tabJobCount'); if(tJ) tJ.textContent = jobs.length;
     const tbody = document.getElementById('jobsTable');
     if (!tbody) return;
-    if (!jobs.length) { tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state">No cron jobs found. Create your first one!</div></td></tr>'; return; }
+    if (!jobs.length) { tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state">No cron jobs found. Create your first one!</div></td></tr>'; return; }
     tbody.innerHTML = jobs.map(j => `
       <tr>
         <td>
@@ -449,9 +449,9 @@ async function fetchJobs() {
         </td>
         <td><a href="${escHtml(j.url)}" target="_blank" class="job-url">${escHtml(j.url)}</a></td>
 
-        <td><span class="badge badge-blue">${fmtInterval(j.interval_seconds)}</span></td>
-        <td class="job-ssl-td" id="ssl-${j.id}">Checking...</td>
+                <td><span class="badge badge-blue">${fmtInterval(j.interval_seconds)}</span></td>
         <td><span class="next-run" data-ts="${j.next_run||''}" data-int="${j.interval_seconds}">${fmtRelTime(j.next_run)}</span></td>
+        <td class="job-ssl-td" id="ssl-${j.id}">Checking...</td>
         <td style="text-align:right">
           <div class="dropdown">
             <button class="btn btn-ghost btn-sm">⋮</button>
