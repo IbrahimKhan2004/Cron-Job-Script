@@ -53,3 +53,18 @@ To run this project, you will need to add the following environment variables:
 This project is pre-configured for deployment on Render or Heroku.
 -   The `Procfile` defines the entry point: `web: python3 app.py`.
 -   Ensure you set the `MONGODB_URI` in your environment settings.
+
+## Changelog
+
+### v3.1.1 - Managed Jobs Ping/SSL Display Update
+- Updated Managed Jobs next-ping text format to show day/hr/min/sec words for clearer countdown readability.
+- Updated Managed Jobs auto-refresh behavior so periodic refresh updates ping timing without triggering automatic SSL re-check requests.
+- Preserved manual/initial SSL check rendering in Managed Jobs while keeping existing cron execution and scheduler logic unchanged.
+
+### v3.1.0 - Cron Job Status Page
+- Added a dedicated per-job status page route (`/jobs/{job_id}/status`) with responsive UI, sticky header, favicon display, and copy URL action.
+- Added read-only status APIs for per-job analytics and recent logs:
+  - `GET /api/jobs/{job_id}/status`
+  - `GET /api/jobs/{job_id}/status/logs?failed_only=true|false`
+- Added a new **Status Page** action in each job row three-dot menu for quick navigation.
+- Status page now shows last run status, execution timing, total/failed runs, success rate, last error, and latest 20 logs with optional failed-only filtering.
