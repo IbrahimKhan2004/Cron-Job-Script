@@ -335,7 +335,18 @@ function fmtRelTime(iso) {
   const diff = new Date(iso) - Date.now();
   if (diff < 0) return 'pinging...';
   const s = Math.round(diff / 1000);
-  return `ping in ${s}s`;
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+
+  let out = [];
+  if (d > 0) out.push(d + 'd');
+  if (h > 0) out.push(h + 'h');
+  if (m > 0) out.push(m + 'm');
+  if (sec > 0 || out.length === 0) out.push(sec + 's');
+
+  return `ping in ${out.join(' ')}`;
 }
 function fmtInterval(s) {
   if (s % 86400 === 0) return `${s/86400}d`;
@@ -459,12 +470,20 @@ async function fetchJobs() {
       jobs.forEach(j => {
         if(j.url && j.url.startsWith('http')) {
           apiCall(`/api/ssl?hostname=${encodeURIComponent(j.url.replace('https://', '').replace('http://', '').split('/')[0])}`)
-            .then(d => {
+                        .then(d => {
               const el = document.getElementById(`ssl-${j.id}`);
               if(!el) return;
               if(!d.valid) { el.textContent = 'Err'; el.className = 'job-ssl-td err'; }
-              else if(d.days_left <= 30) { el.textContent = `${d.days_left}d`; el.className = 'job-ssl-td warn'; }
-              else { el.textContent = `${d.days_left}d`; el.className = 'job-ssl-td ok'; }
+              else {
+                let txt = '';
+                if(d.days_left > 0) txt += `${d.days_left}d `;
+                if(d.hours_left > 0) txt += `${d.hours_left}h `;
+                if(d.minutes_left > 0) txt += `${d.minutes_left}m `;
+                if(d.seconds_left > 0 || txt === '') txt += `${d.seconds_left}s`;
+                el.textContent = txt.trim();
+                if(d.days_left <= 30) { el.className = 'job-ssl-td warn'; }
+                else { el.className = 'job-ssl-td ok'; }
+              }
             }).catch(() => {
               const el = document.getElementById(`ssl-${j.id}`);
               if(el) { el.textContent = 'Err'; el.className = 'job-ssl-td err'; }
