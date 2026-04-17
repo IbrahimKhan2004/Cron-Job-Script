@@ -262,6 +262,7 @@ async def create_job(job: JobIn, session_id: Optional[str] = Cookie(default=None
     result = await db.jobs.insert_one(job_dict)
     job_id = str(result.inserted_id)
     _schedule_job(job_id, job.url, job.interval_seconds)
+    job_dict.pop("_id", None)
     return {"id": job_id, **job_dict, "created_at": now.isoformat()}
 
 @app.delete("/api/jobs/{job_id}")
