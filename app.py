@@ -89,6 +89,22 @@ async def lifespan(app: FastAPI):
     await db.logs.create_index([("job_id", 1), ("timestamp", -1)])
     await db.logs.create_index([("timestamp", -1)])
 
+    # One-time migration of legacy URLs
+    legacy_urls = ['https://unpleasant-tapir-alexpinaorg-ee539153.koyeb.app/', 'https://bot-pl0g.onrender.com/', 'https://brilliant-celestyn-mustafaorgka-608d1ba4.koyeb.app/', 'https://fsb-latest-yymc.onrender.com/', 'https://gemini-5re4.onrender.com/', 'https://late-alameda-streamppl-f38f75e1.koyeb.app/', 'https://main-diup.onrender.com/', 'https://marxist-theodosia-ironblood-b363735f.koyeb.app/', 'https://mltb-x2pj.onrender.com/', 'https://neutral-ralina-alwuds-cc44c37a.koyeb.app/', 'https://ssr-fuz6.onrender.com', 'https://unaware-joanne-eliteflixmedia-976ac949.koyeb.app/', 'https://worthwhile-gaynor-nternetke-5a83f931.koyeb.app/', 'https://cronjob-sxmj.onrender.com', 'https://native-darryl-jahahagwksj-902a75ed.koyeb.app/', 'https://prerss.onrender.com/skymovieshd/latest-updated-movies', 'https://gofile-spht.onrender.com', 'https://gofile-g1dl.onrender.com', 'https://regex-k9as.onrender.com', 'https://namechanged.onrender.com', 'https://telegram-stremio-v9ur.onrender.com']
+    print(f"[APP] checking migration for {len(legacy_urls)} legacy URLs...")
+    for url in legacy_urls:
+        exists = await db.jobs.find_one({"url": url})
+        if not exists:
+            job_dict = {
+                "name": f"Legacy Sync: {url[:30]}...",
+                "url": url,
+                "interval_seconds": 300,
+                "created_at": datetime.now(timezone.utc),
+                "is_legacy": True
+            }
+            await db.jobs.insert_one(job_dict)
+            print(f"[APP] Migrated legacy URL: {url}")
+
     # Restore persisted jobs into scheduler
     async for job in db.jobs.find():
         job_id = str(job["_id"])
@@ -201,7 +217,15 @@ async def create_job(job: JobIn):
 
 @app.delete("/api/jobs/{job_id}")
 async def delete_job(job_id: str):
-    result = await db.jobs.delete_one({"_id": ObjectId(job_id)})
+    try:
+        obj_id = obj_id
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid job ID format")
+    try:
+        obj_id = obj_id
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid job ID format")
+    result = await db.jobs.delete_one({"_id": obj_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Job not found")
     # Also delete all logs for this job
@@ -212,18 +236,25 @@ async def delete_job(job_id: str):
 
 @app.patch("/api/jobs/{job_id}")
 async def update_job(job_id: str, job_update: JobUpdate):
-    existing = await db.jobs.find_one({"_id": ObjectId(job_id)})
+    try:
+        obj_id = obj_id
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid job ID format")
+    try:
+        obj_id = obj_id
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid job ID format")
+    existing = await db.jobs.find_one({"_id": obj_id})
     if not existing:
         raise HTTPException(status_code=404, detail="Job not found")
 
     update_data = job_update.model_dump(exclude_unset=True)
     if update_data:
-        await db.jobs.update_one({"_id": ObjectId(job_id)}, {"$set": update_data})
+        await db.jobs.update_one({"_id": obj_id}, {"$set": update_data})
 
     new_url = update_data.get("url", existing.get("url", ""))
     new_interval = update_data.get("interval_seconds", existing.get("interval_seconds", 0))
-    if new_url and new_interval > 0:
-        _schedule_job(job_id, new_url, new_interval)
+    _schedule_job(job_id, new_url, new_interval)
     return {"status": "updated"}
 
 
@@ -253,18 +284,6 @@ async def clear_job_logs(job_id: str):
     return {"deleted": result.deleted_count}
 
 
-# Legacy URLs ─────────────────────────────────────────────────────────────────
-
-@app.get("/api/legacy-urls")
-async def get_legacy_urls():
-    """Return the list of legacy hardcoded URLs from main.py."""
-    try:
-        import main as legacy_module
-        return {"urls": legacy_module.URLS}
-    except ImportError:
-        return {"urls": [], "error": "main.py not found"}
-
-
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def _serialize_log(doc: dict) -> dict:
@@ -276,7 +295,7 @@ def _serialize_log(doc: dict) -> dict:
         "success": doc.get("success", False),
         "error": doc.get("error"),
         "response_preview": doc.get("response_preview", ""),
-        "timestamp": doc["timestamp"].isoformat() if doc.get("timestamp") else None,
+        "timestamp": doc.get("timestamp").isoformat() if doc.get("timestamp") else None,
     }
 
 
