@@ -39,7 +39,7 @@
     }
 
     /* ── Scrollbar ─────────────────────────────────────────────────────────── */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: var(--surface); }
     ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
 
@@ -146,7 +146,7 @@
     .main-content { display: flex; flex-direction: column; }
 
     /* ── Tabs ──────────────────────────────────────────────────────────────── */
-    .tab-bar {
+    .tab-bar { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none;
       display: flex; align-items: center; gap: 2px;
       padding: 16px 24px 0;
       border-bottom: 1px solid var(--border);
@@ -174,7 +174,7 @@
     .tab-panel.active { display: block; }
 
     /* ── Jobs Table ────────────────────────────────────────────────────────── */
-    .table-wrap { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .table-wrap { border: 1px solid var(--border); border-radius: var(--radius); overflow-x: auto; -webkit-overflow-scrolling: touch; }
     table { width: 100%; border-collapse: collapse; }
     thead tr { background: var(--surface2); }
     thead th {
@@ -221,7 +221,7 @@
     }
     .filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
-    .log-entry {
+    .log-entry { flex-wrap: wrap;
       display: flex; align-items: flex-start; gap: 12px;
       padding: 11px 14px;
       border-bottom: 1px solid var(--border);
@@ -230,7 +230,7 @@
     }
     .log-entry:hover { background: var(--surface2); }
     .log-entry:last-child { border-bottom: none; }
-    .log-ts { color: var(--text3); white-space: nowrap; min-width: 130px; }
+    .log-ts { color: var(--text3); white-space: nowrap; min-width: 120px; margin-bottom: 4px; }
     .log-status { min-width: 70px; }
     .log-url { color: var(--text2); flex: 1; word-break: break-all; }
     .log-job-name { color: var(--text2); font-style: italic; min-width: 100px; max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -264,7 +264,7 @@
     .modal-overlay.open { opacity: 1; pointer-events: all; }
     .modal {
       background: var(--surface); border: 1px solid var(--border2);
-      border-radius: 14px; padding: 28px; width: 480px; max-width: 95vw;
+      border-radius: 14px; padding: 28px; width: 100%; max-width: 480px; margin: 16px;
       transform: translateY(10px); transition: transform .2s;
     }
     .modal-overlay.open .modal { transform: translateY(0); }
@@ -279,7 +279,7 @@
     }
     .drawer-overlay.open { opacity: 1; pointer-events: all; }
     .drawer {
-      width: 520px; max-width: 95vw;
+      width: 100%; max-width: 520px;
       background: var(--surface); border-left: 1px solid var(--border2);
       height: 100%; overflow-y: auto;
       transform: translateX(30px); transition: transform .2s;
