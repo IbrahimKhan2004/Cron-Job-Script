@@ -1,2 +1,3 @@
 #!/bin/bash
-gunicorn main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8080
+go build -o app .
+./app
