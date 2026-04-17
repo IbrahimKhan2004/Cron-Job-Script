@@ -180,18 +180,116 @@
       <div class="card-title">⚙ Create Job</div>
       <div class="form-field"><label>Job Name</label><input type="text" id="jobName" placeholder="e.g. Keep Alive" /></div>
       <div class="form-field"><label>Target URL</label><input type="url" id="jobUrl" placeholder="https://..." /></div>
+      
       <div class="form-field">
-        <label>Run Every</label>
-        <div class="interval-row">
-          <input type="number" id="jobInterval" value="5" min="1" style="max-width:90px" />
-          <select id="jobIntervalUnit">
-            <option value="minutes">Minutes</option>
-            <option value="seconds">Seconds</option>
-            <option value="hours">Hours</option>
-            <option value="days">Days</option>
+        <label>Schedule Type</label>
+        <select id="scheduleType" onchange="toggleScheduleMode()">
+          <option value="interval">Every X Minutes/Hours</option>
+          <option value="daily">Daily at Specific Time</option>
+        </select>
+      </div>
+
+      <!-- Interval Mode -->
+      <div id="intervalMode">
+        <div class="form-field">
+          <label>Run Every</label>
+          <div class="interval-row">
+            <input type="number" id="jobInterval" value="5" min="1" style="max-width:90px" />
+            <select id="jobIntervalUnit">
+              <option value="minutes">Minutes</option>
+              <option value="seconds">Seconds</option>
+              <option value="hours">Hours</option>
+              <option value="days">Days</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Daily Mode -->
+      <div id="dailyMode" style="display:none">
+        <div class="form-field">
+          <label>Hour (0-23)</label>
+          <select id="jobHour">
+            <option value="">Select hour...</option>
+            <option value="0">00</option>
+            <option value="1">01</option>
+            <option value="2">02</option>
+            <option value="3">03</option>
+            <option value="4">04</option>
+            <option value="5">05</option>
+            <option value="6">06</option>
+            <option value="7">07</option>
+            <option value="8">08</option>
+            <option value="9">09</option>
+            <option value="10">10</option>
+            <option value="11">11</option>
+            <option value="12">12</option>
+            <option value="13">13</option>
+            <option value="14">14</option>
+            <option value="15">15</option>
+            <option value="16">16</option>
+            <option value="17">17</option>
+            <option value="18">18</option>
+            <option value="19">19</option>
+            <option value="20">20</option>
+            <option value="21">21</option>
+            <option value="22">22</option>
+            <option value="23">23</option>
+          </select>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
+          <div class="form-field">
+            <label>Minute (0-59)</label>
+            <select id="jobMinute">
+              <option value="0">00</option>
+              <option value="1">01</option>
+              <option value="2">02</option>
+              <option value="3">03</option>
+              <option value="4">04</option>
+              <option value="5">05</option>
+              <option value="6">06</option>
+              <option value="7">07</option>
+              <option value="8">08</option>
+              <option value="9">09</option>
+              <option value="10">10</option>
+              <option value="15">15</option>
+              <option value="20">20</option>
+              <option value="25">25</option>
+              <option value="30">30</option>
+              <option value="35">35</option>
+              <option value="40">40</option>
+              <option value="45">45</option>
+              <option value="50">50</option>
+              <option value="55">55</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Second (0-59)</label>
+            <select id="jobSecond">
+              <option value="0">00</option>
+              <option value="5">05</option>
+              <option value="10">10</option>
+              <option value="15">15</option>
+              <option value="20">20</option>
+              <option value="25">25</option>
+              <option value="30">30</option>
+              <option value="35">35</option>
+              <option value="40">40</option>
+              <option value="45">45</option>
+              <option value="50">50</option>
+              <option value="55">55</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-field">
+          <label>Timezone</label>
+          <select id="jobTimezone">
+            <option value="UTC">UTC</option>
+            <option value="IST">IST (Asia/Kolkata)</option>
           </select>
         </div>
       </div>
+
       <button class="btn btn-primary" onclick="createJob()">⚡ Schedule Now</button>
     </div>
 
@@ -230,7 +328,7 @@
             <tr>
                             <th>Name</th>
               <th>Target URL</th>
-              <th>Interval</th>
+              <th>Schedule</th>
               <th>Next Ping</th>
               <th>SSL</th>
               <th style="text-align:right">Actions</th>
@@ -268,20 +366,112 @@
   <div class="modal">
     <h3 style="margin-bottom:20px">Edit Cron Job</h3>
     <input type="hidden" id="editJobId" />
+    <input type="hidden" id="editJobType" />
+    
     <div class="form-field"><label>Job Name</label><input type="text" id="editName" /></div>
     <div class="form-field"><label>Target URL</label><input type="url" id="editUrl" /></div>
-    <div class="form-field">
-      <label>Run Every</label>
-      <div class="interval-row">
-        <input type="number" id="editInterval" min="1" style="max-width:90px" />
-        <select id="editIntervalUnit">
-          <option value="minutes">Minutes</option>
-          <option value="seconds">Seconds</option>
-          <option value="hours">Hours</option>
-          <option value="days">Days</option>
+    
+    <!-- Interval Mode (Edit) -->
+    <div id="editIntervalMode">
+      <div class="form-field">
+        <label>Run Every</label>
+        <div class="interval-row">
+          <input type="number" id="editInterval" min="1" style="max-width:90px" />
+          <select id="editIntervalUnit">
+            <option value="minutes">Minutes</option>
+            <option value="seconds">Seconds</option>
+            <option value="hours">Hours</option>
+            <option value="days">Days</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Daily Mode (Edit) -->
+    <div id="editDailyMode" style="display:none">
+      <div class="form-field">
+        <label>Hour (0-23)</label>
+        <select id="editHour">
+          <option value="">Select hour...</option>
+          <option value="0">00</option>
+          <option value="1">01</option>
+          <option value="2">02</option>
+          <option value="3">03</option>
+          <option value="4">04</option>
+          <option value="5">05</option>
+          <option value="6">06</option>
+          <option value="7">07</option>
+          <option value="8">08</option>
+          <option value="9">09</option>
+          <option value="10">10</option>
+          <option value="11">11</option>
+          <option value="12">12</option>
+          <option value="13">13</option>
+          <option value="14">14</option>
+          <option value="15">15</option>
+          <option value="16">16</option>
+          <option value="17">17</option>
+          <option value="18">18</option>
+          <option value="19">19</option>
+          <option value="20">20</option>
+          <option value="21">21</option>
+          <option value="22">22</option>
+          <option value="23">23</option>
+        </select>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
+        <div class="form-field">
+          <label>Minute (0-59)</label>
+          <select id="editMinute">
+            <option value="0">00</option>
+            <option value="1">01</option>
+            <option value="2">02</option>
+            <option value="3">03</option>
+            <option value="4">04</option>
+            <option value="5">05</option>
+            <option value="6">06</option>
+            <option value="7">07</option>
+            <option value="8">08</option>
+            <option value="9">09</option>
+            <option value="10">10</option>
+            <option value="15">15</option>
+            <option value="20">20</option>
+            <option value="25">25</option>
+            <option value="30">30</option>
+            <option value="35">35</option>
+            <option value="40">40</option>
+            <option value="45">45</option>
+            <option value="50">50</option>
+            <option value="55">55</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Second (0-59)</label>
+          <select id="editSecond">
+            <option value="0">00</option>
+            <option value="5">05</option>
+            <option value="10">10</option>
+            <option value="15">15</option>
+            <option value="20">20</option>
+            <option value="25">25</option>
+            <option value="30">30</option>
+            <option value="35">35</option>
+            <option value="40">40</option>
+            <option value="45">45</option>
+            <option value="50">50</option>
+            <option value="55">55</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-field">
+        <label>Timezone</label>
+        <select id="editTimezone">
+          <option value="UTC">UTC</option>
+          <option value="IST">IST (Asia/Kolkata)</option>
         </select>
       </div>
     </div>
+
     <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:24px;">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveEdit()" style="width:auto">Save Changes</button>
@@ -355,6 +545,12 @@ function fmtInterval(s) {
   if (s % 60 === 0) return `${s/60}m`;
   return `${s}s`;
 }
+function fmtTime(hour, minute, second, tz) {
+  const h = String(hour || 0).padStart(2, '0');
+  const m = String(minute || 0).padStart(2, '0');
+  const s = String(second || 0).padStart(2, '0');
+  return `${h}:${m}:${s} ${tz || 'UTC'}`;
+}
 function toSeconds(v, u) {
   v = parseInt(v);
   if (u === 'minutes') return v * 60;
@@ -367,6 +563,20 @@ function fromSeconds(s) {
   if (s % 3600 === 0) return { val: s/3600, unit: 'hours' };
   if (s % 60 === 0) return { val: s/60, unit: 'minutes' };
   return { val: s, unit: 'seconds' };
+}
+
+// ── Schedule Mode Toggle ────────────────────────────────────────────────────
+function toggleScheduleMode() {
+  const type = document.getElementById('scheduleType').value;
+  const intervalMode = document.getElementById('intervalMode');
+  const dailyMode = document.getElementById('dailyMode');
+  if (type === 'interval') {
+    intervalMode.style.display = 'block';
+    dailyMode.style.display = 'none';
+  } else {
+    intervalMode.style.display = 'none';
+    dailyMode.style.display = 'block';
+  }
 }
 
 // ── Auth ───────────────────────────────────────────────────────────────────
@@ -442,16 +652,24 @@ async function fetchJobs(fetchSsl = true) {
     const tbody = document.getElementById('jobsTable');
     if (!tbody) return;
     if (!jobs.length) { tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state">No cron jobs found. Create your first one!</div></td></tr>'; return; }
-    tbody.innerHTML = jobs.map(j => `
+    tbody.innerHTML = jobs.map(j => {
+      let scheduleDisplay = '';
+      if (j.interval_seconds) {
+        scheduleDisplay = `<span class="badge badge-blue">${fmtInterval(j.interval_seconds)}</span>`;
+      } else if (j.hour !== undefined) {
+        scheduleDisplay = `<span class="badge badge-green">${fmtTime(j.hour, j.minute, j.second, j.timezone)}</span>`;
+      } else {
+        scheduleDisplay = '<span class="badge badge-gray">—</span>';
+      }
+      return `
       <tr>
         <td>
           <div class="job-name">${escHtml(j.name || 'Untitled')}</div>
           ${j.is_legacy ? '<span class="badge badge-gray" style="font-size:.65rem">legacy</span>' : ''}
         </td>
         <td><a href="${escHtml(j.url)}" target="_blank" class="job-url">${escHtml(j.url)}</a></td>
-
-                <td><span class="badge badge-blue">${fmtInterval(j.interval_seconds)}</span></td>
-        <td><span class="next-run" data-ts="${j.next_run||''}" data-int="${j.interval_seconds}">${fmtRelTime(j.next_run)}</span></td>
+        <td>${scheduleDisplay}</td>
+        <td><span class="next-run" data-ts="${j.next_run||''}">${fmtRelTime(j.next_run)}</span></td>
         <td class="job-ssl-td ${sslCache[j.id]?.className || ''}" id="ssl-${j.id}">${sslCache[j.id]?.text || (fetchSsl ? 'Checking...' : '—')}</td>
         <td style="text-align:right">
           <div class="dropdown">
@@ -464,9 +682,9 @@ async function fetchJobs(fetchSsl = true) {
             </div>
           </div>
         </td>
-
       </tr>
-    `).join('');
+    `;
+    }).join('');
 
     if (fetchSsl) {
       setTimeout(() => {
@@ -536,15 +754,42 @@ async function fetchLogs() {
 async function createJob() {
   const name = document.getElementById('jobName').value.trim();
   const url = document.getElementById('jobUrl').value.trim();
-  const val = document.getElementById('jobInterval').value;
-  const unit = document.getElementById('jobIntervalUnit').value;
+  const scheduleType = document.getElementById('scheduleType').value;
+  
   if (!name || !url) return toast("Name and URL are required", "error");
+  
+  let body;
+  if (scheduleType === 'interval') {
+    const val = document.getElementById('jobInterval').value;
+    const unit = document.getElementById('jobIntervalUnit').value;
+    body = { name, url, interval_seconds: toSeconds(val, unit) };
+  } else {
+    const hour = document.getElementById('jobHour').value;
+    const minute = document.getElementById('jobMinute').value;
+    const second = document.getElementById('jobSecond').value;
+    const tz = document.getElementById('jobTimezone').value;
+    
+    if (!hour) return toast("Select an hour", "error");
+    body = { 
+      name, url, 
+      hour: parseInt(hour), 
+      minute: parseInt(minute) || 0, 
+      second: parseInt(second) || 0, 
+      timezone: tz 
+    };
+  }
+  
   try {
-    await apiCall('/api/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, url, interval_seconds: toSeconds(val, unit) }) });
+    await apiCall('/api/jobs', { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body) 
+    });
     toast("Job scheduled successfully");
     document.getElementById('jobName').value = "";
     document.getElementById('jobUrl').value = "";
+    document.getElementById('scheduleType').value = "interval";
+    toggleScheduleMode();
     await fetchJobs();
   } catch (e) { toast(e.message, "error"); }
 }
@@ -573,9 +818,27 @@ function openEdit(id) {
   document.getElementById('editJobId').value = id;
   document.getElementById('editName').value = j.name || '';
   document.getElementById('editUrl').value = j.url;
-  const { val, unit } = fromSeconds(j.interval_seconds);
-  document.getElementById('editInterval').value = val;
-  document.getElementById('editIntervalUnit').value = unit;
+  
+  const isDaily = j.hour !== undefined && j.hour !== null;
+  document.getElementById('editJobType').value = isDaily ? 'daily' : 'interval';
+  
+  if (isDaily) {
+    // Show daily mode
+    document.getElementById('editIntervalMode').style.display = 'none';
+    document.getElementById('editDailyMode').style.display = 'block';
+    document.getElementById('editHour').value = j.hour || '';
+    document.getElementById('editMinute').value = j.minute || 0;
+    document.getElementById('editSecond').value = j.second || 0;
+    document.getElementById('editTimezone').value = j.timezone || 'UTC';
+  } else {
+    // Show interval mode
+    document.getElementById('editIntervalMode').style.display = 'block';
+    document.getElementById('editDailyMode').style.display = 'none';
+    const { val, unit } = fromSeconds(j.interval_seconds || 0);
+    document.getElementById('editInterval').value = val;
+    document.getElementById('editIntervalUnit').value = unit;
+  }
+  
   document.getElementById('editModal').classList.add('open');
 }
 function closeModal() { document.getElementById('editModal').classList.remove('open'); }
@@ -584,12 +847,40 @@ async function saveEdit() {
   const id = document.getElementById('editJobId').value;
   const name = document.getElementById('editName').value.trim();
   const url = document.getElementById('editUrl').value.trim();
-  const val = document.getElementById('editInterval').value;
-  const unit = document.getElementById('editIntervalUnit').value;
+  const jobType = document.getElementById('editJobType').value;
+  
+  if (!name || !url) return toast("Name and URL are required", "error");
+  
+  let body;
+  if (jobType === 'daily') {
+    const hour = document.getElementById('editHour').value;
+    const minute = document.getElementById('editMinute').value;
+    const second = document.getElementById('editSecond').value;
+    const tz = document.getElementById('editTimezone').value;
+    
+    if (!hour) return toast("Select an hour", "error");
+    body = { 
+      name, url, 
+      hour: parseInt(hour), 
+      minute: parseInt(minute) || 0, 
+      second: parseInt(second) || 0, 
+      timezone: tz 
+    };
+  } else {
+    const val = document.getElementById('editInterval').value;
+    const unit = document.getElementById('editIntervalUnit').value;
+    body = { name, url, interval_seconds: toSeconds(val, unit) };
+  }
+  
   try {
-    await apiCall(`/api/jobs/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, url, interval_seconds: toSeconds(val, unit) }) });
-    toast("Job updated"); closeModal(); await fetchJobs();
+    await apiCall(`/api/jobs/${id}`, { 
+      method: 'PATCH', 
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body) 
+    });
+    toast("Job updated"); 
+    closeModal(); 
+    await fetchJobs();
   } catch (e) { toast("Update failed", "error"); }
 }
 
