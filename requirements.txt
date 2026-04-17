@@ -3,3 +3,11 @@ fastapi
 uvicorn
 Flask
 gunicorn
+motor
+apscheduler
+dnspython
+jinja2
+python-multipart
+pydantic-settings
+httpx
+pytest
