@@ -316,6 +316,35 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ── Responsive ────────────────────────────────────────────────────────── */
+    /* -- Mobile Optimized (412px and below) -- */
+    @media (max-width: 600px) {
+      :root { --radius: 8px; }
+      html { font-size: 13px; }
+      .topbar { padding: 0 16px; height: 50px; }
+      .logo { font-size: 1rem; }
+      .logo-icon { width: 28px; height: 28px; font-size: 14px; }
+      .page { display: block; }
+      .sidebar { padding: 16px; border-bottom: 1px solid var(--border); }
+      .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .stat-item { padding: 10px; }
+      .stat-value { font-size: 1.25rem; }
+      .tab-bar { padding: 0 8px; position: sticky; top: 50px; z-index: 90; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+      .tab-bar::-webkit-scrollbar { display: none; }
+      .tab-btn { padding: 12px 14px; font-size: 0.75rem; flex-shrink: 0; }
+      .tab-panel { padding: 16px; }
+      .table-wrap { margin: 0 -4px; border-radius: 4px; overflow-x: auto; }
+      th:nth-child(2), td:nth-child(2), th:nth-child(4), td:nth-child(4) { display: none; }
+      .job-name { font-size: 0.8rem; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+      .log-entry { flex-direction: column; gap: 6px; padding: 12px; position: relative; }
+      .log-ts { font-size: 0.65rem; color: var(--text3); }
+      .log-status { position: absolute; top: 12px; right: 12px; }
+      .log-job-name { font-weight: 700; color: var(--accent); font-size: 0.75rem; max-width: 70%; }
+      .log-url { font-size: 0.65rem; color: var(--text3); word-break: break-all; margin-top: 2px; }
+      .log-error { background: rgba(239,68,68,0.05); padding: 4px; border-radius: 4px; margin-top: 4px; }
+      .drawer { width: 100%; }
+      .modal { width: 90%; padding: 20px; }
+    }
+
     @media (max-width: 768px) {
       .page { grid-template-columns: 1fr; }
       .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
@@ -390,7 +419,7 @@
         </div>
         <div class="stat-item">
           <div class="stat-value" id="statLegacy">21</div>
-          <div class="stat-label">Legacy URLs</div>
+          <div class="stat-label">System Tasks</div>
         </div>
         <div class="stat-item">
           <div class="stat-value" id="statSuccess" style="color:var(--green)">—</div>
@@ -411,10 +440,7 @@
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         Execution Logs <span class="tab-count" id="tabLogCount">0</span>
       </button>
-      <button class="tab-btn" onclick="switchTab('legacy', this)">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        Legacy URLs <span class="tab-count">21</span>
-      </button>
+
       <div class="tab-bar-right">
         <button class="btn btn-ghost btn-sm" onclick="refreshAll()" title="Refresh">
           <svg id="refreshIcon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
@@ -523,6 +549,26 @@
 <div id="toastContainer"></div>
 
 <script>
+
+// ── API Helper ─────────────────────────────────────────────────────────────
+async function apiCall(url, options = {}) {
+  try {
+    const response = await fetch(url, options);
+    const contentType = response.headers.get("content-type");
+    let data = null;
+    if (contentType && contentType.includes("application/json")) {
+      data = await response.json();
+    }
+    if (!response.ok) {
+      throw new Error(data?.detail || data?.message || `HTTP error! status: ${response.status}`);
+    }
+    return data;
+  } catch (e) {
+    console.error(`API Error (${url}):`, e);
+    throw e;
+  }
+}
+
 // ── State ──────────────────────────────────────────────────────────────────
 let allLogs = [];
 let logFilter = 'all';
@@ -541,8 +587,7 @@ function toast(msg, type = 'success') {
 // ── Health Check ───────────────────────────────────────────────────────────
 async function checkHealth() {
   try {
-    const r = await fetch('/health');
-    const d = await r.json();
+    const d = await apiCall('/health');
     document.getElementById('healthStatus').textContent = `Online · ${d.jobs} jobs`;
   } catch { document.getElementById('healthStatus').textContent = 'Offline'; }
 }
@@ -553,7 +598,7 @@ function switchTab(name, btn) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   btn.classList.add('active');
-  if (name === 'legacy') fetchLegacy();
+
   if (name === 'logs') fetchLogs();
 }
 
@@ -595,8 +640,7 @@ function fromSeconds(secs) {
 // ── Fetch Jobs ─────────────────────────────────────────────────────────────
 async function fetchJobs() {
   try {
-    const r = await fetch('/api/jobs');
-    const jobs = await r.json();
+    const jobs = await apiCall('/api/jobs') || [];
     jobsMap = {};
     jobs.forEach(j => jobsMap[j.id] = j);
 
@@ -647,32 +691,27 @@ async function createJob() {
 
   const interval_seconds = toSeconds(intervalVal, unit);
   try {
-    const r = await fetch('/api/jobs', {
+    await apiCall('/api/jobs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, url, interval_seconds })
     });
-    if (r.ok) {
-      toast(`Job "${name}" scheduled!`, 'success');
-      document.getElementById('jobName').value = '';
-      document.getElementById('jobUrl').value = '';
-      document.getElementById('jobInterval').value = '5';
-      fetchJobs();
-    } else {
-      const err = await r.json();
-      toast(err.detail || 'Failed to create job', 'error');
-    }
-  } catch { toast('Network error', 'error'); }
+    toast(`Job "${name}" scheduled!`, 'success');
+    document.getElementById('jobName').value = '';
+    document.getElementById('jobUrl').value = '';
+    document.getElementById('jobInterval').value = '5';
+    fetchJobs(); fetchLogs();
+  } catch (e) { toast('Network error (Check console)', 'error'); }
 }
 
 // ── Delete Job ─────────────────────────────────────────────────────────────
 async function deleteJob(id, label) {
-  if (!confirm(`Delete job "${label}"?\nThis will also delete all its logs.`)) return;
+  if (!confirm(`Delete job "${label}"?
+This will also delete all its logs.`)) return;
   try {
-    const r = await fetch(`/api/jobs/${id}`, { method: 'DELETE' });
-    if (r.ok) { toast('Job deleted', 'success'); fetchJobs(); fetchLogs(); }
-    else toast('Failed to delete', 'error');
-  } catch { toast('Network error', 'error'); }
+    await apiCall(`/api/jobs/${id}`, { method: 'DELETE' });
+    toast('Job deleted', 'success'); fetchJobs(); fetchLogs();
+  } catch (e) { toast('Network error (Check console)', 'error'); }
 }
 
 // ── Edit Modal ─────────────────────────────────────────────────────────────
@@ -698,21 +737,19 @@ async function saveEdit() {
   const interval_seconds = toSeconds(val, unit);
 
   try {
-    const r = await fetch(`/api/jobs/${id}`, {
+    await apiCall(`/api/jobs/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, url, interval_seconds })
     });
-    if (r.ok) { toast('Job updated', 'success'); closeModal(); fetchJobs(); }
-    else toast('Failed to update', 'error');
-  } catch { toast('Network error', 'error'); }
+    toast('Job updated', 'success'); closeModal(); fetchJobs(); fetchLogs();
+  } catch (e) { toast('Network error (Check console)', 'error'); }
 }
 
 // ── Fetch All Logs ─────────────────────────────────────────────────────────
 async function fetchLogs() {
   try {
-    const r = await fetch('/api/logs?limit=200');
-    allLogs = await r.json();
+    allLogs = await apiCall('/api/logs?limit=200') || [];
     document.getElementById('tabLogCount').textContent = allLogs.length;
     document.getElementById('statLogs').textContent = allLogs.length;
 
@@ -773,8 +810,7 @@ async function openJobLogs(jobId, jobName) {
   document.getElementById('logsDrawer').classList.add('open');
 
   try {
-    const r = await fetch(`/api/jobs/${jobId}/logs?limit=100`);
-    const logs = await r.json();
+    const logs = await apiCall(`/api/jobs/${jobId}/logs?limit=100`) || [];
     const body = document.getElementById('drawerBody');
 
     if (!logs.length) {
@@ -815,30 +851,7 @@ function closeDrawer() { document.getElementById('logsDrawer').classList.remove(
 
 async function clearJobLogs(jobId, name) {
   if (!confirm(`Clear all logs for "${name}"?`)) return;
-  const r = await fetch(`/api/jobs/${jobId}/logs`, { method: 'DELETE' });
-  if (r.ok) { toast('Logs cleared', 'success'); openJobLogs(jobId, name); fetchLogs(); }
-}
-
-// ── Legacy URLs ────────────────────────────────────────────────────────────
-async function fetchLegacy() {
-  try {
-    const r = await fetch('/api/legacy-urls');
-    const data = await r.json();
-    const el = document.getElementById('legacyList');
-    if (!data.urls || !data.urls.length) {
-      el.innerHTML = '<div class="empty-state">No legacy URLs found.</div>';
-      return;
-    }
-    el.innerHTML = data.urls.map((url, i) => `
-      <div class="legacy-url-item">
-        <span class="legacy-url">${escHtml(url)}</span>
-        <span class="badge badge-gray" style="margin-left:12px;flex-shrink:0">#${i+1}</span>
-      </div>
-    `).join('');
-  } catch {
-    // Fallback: show static list
-    document.getElementById('legacyList').innerHTML = '<div class="empty-state" style="padding:20px">Could not load legacy URLs.<br><small>Edit main.py directly to manage them.</small></div>';
-  }
+  await apiCall(`/api/jobs/${jobId}/logs`, { method: 'DELETE' }); toast('Logs cleared', 'success'); openJobLogs(jobId, name); fetchLogs();
 }
 
 // ── Refresh All ────────────────────────────────────────────────────────────
