@@ -7,55 +7,29 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
-    /* ── Reset & Base ─────────────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg:        #0b0d12;
-      --surface:   #111520;
-      --surface2:  #181d2a;
-      --border:    #1e2435;
-      --border2:   #252d42;
-      --accent:    #3b82f6;
-      --accent2:   #6366f1;
-      --green:     #22c55e;
-      --red:       #ef4444;
-      --yellow:    #f59e0b;
-      --text:      #e2e8f0;
-      --text2:     #8b9ab5;
-      --text3:     #4a5568;
-      --radius:    12px;
-      --font-mono: 'JetBrains Mono', monospace;
-      --font-sans: 'Sora', sans-serif;
+      --bg: #0b0d12; --surface: #111520; --surface2: #181d2a;
+      --border: #1e2435; --border2: #252d42;
+      --accent: #3b82f6; --accent2: #6366f1;
+      --green: #22c55e; --red: #ef4444; --yellow: #f59e0b; --orange: #f97316;
+      --text: #e2e8f0; --text2: #8b9ab5; --text3: #4a5568;
+      --radius: 12px; --font-mono: 'JetBrains Mono', monospace; --font-sans: 'Sora', sans-serif;
     }
-
     html { font-size: 14px; }
-    body {
-      font-family: var(--font-sans);
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
-
-    /* ── Scrollbar ─────────────────────────────────────────────────────────── */
+    body { font-family: var(--font-sans); background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: var(--surface); }
     ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 10px; }
 
-    /* ── Topbar ────────────────────────────────────────────────────────────── */
     .topbar {
       position: sticky; top: 0; z-index: 100;
       display: flex; align-items: center; justify-content: space-between;
       padding: 0 24px; height: 60px;
-      background: rgba(11,13,18,.8);
-      backdrop-filter: blur(16px);
+      background: rgba(11,13,18,.8); backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--border);
     }
-    .logo {
-      display: flex; align-items: center; gap: 10px;
-      font-size: 1.2rem; font-weight: 800;
-    }
+    .logo { display: flex; align-items: center; gap: 10px; font-size: 1.2rem; font-weight: 800; }
     .logo-icon {
       width: 32px; height: 32px; border-radius: 8px;
       background: linear-gradient(135deg, var(--accent), var(--accent2));
@@ -63,123 +37,95 @@
       box-shadow: 0 0 15px rgba(59,130,246,0.4);
     }
     .logo span { color: var(--accent); }
-
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
     .health-badge {
-      display: flex; align-items: center; gap: 8px;
-      font-size: .75rem; font-family: var(--font-mono);
-      color: var(--green); background: rgba(34,197,94,.1);
-      padding: 6px 12px; border-radius: 30px;
+      display: flex; align-items: center; gap: 8px; font-size: .75rem;
+      font-family: var(--font-mono); color: var(--green);
+      background: rgba(34,197,94,.1); padding: 6px 12px; border-radius: 30px;
       border: 1px solid rgba(34,197,94,.2);
     }
     .health-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .user-badge {
+      display: flex; align-items: center; gap: 8px; font-size: .75rem;
+      font-family: var(--font-mono); padding: 6px 12px; border-radius: 30px; border: 1px solid;
+    }
+    .user-badge.admin { color: var(--yellow); background: rgba(245,158,11,.1); border-color: rgba(245,158,11,.2); }
+    .user-badge.user { color: var(--accent); background: rgba(59,130,246,.1); border-color: rgba(59,130,246,.2); }
+    .btn-logout { font-size: .75rem; color: var(--text3); background: none; border: 1px solid var(--border2); border-radius: 8px; padding: 6px 12px; cursor: pointer; transition: all 0.2s; }
+    .btn-logout:hover { color: var(--red); border-color: var(--red); }
 
-    /* ── Layout ────────────────────────────────────────────────────────────── */
     .page { display: grid; grid-template-columns: 320px 1fr; gap: 0; min-height: calc(100vh - 60px); }
+    .sidebar { border-right: 1px solid var(--border); padding: 24px 20px; display: flex; flex-direction: column; gap: 20px; background: rgba(17,21,32,0.5); }
 
-    /* ── Sidebar ───────────────────────────────────────────────────────────── */
-    .sidebar {
-      border-right: 1px solid var(--border);
-      padding: 24px 20px;
-      display: flex; flex-direction: column; gap: 24px;
-      background: rgba(17,21,32,0.5);
-    }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+    .card-title { font-size: .8rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text2); margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
 
-    /* ── Components ────────────────────────────────────────────────────────── */
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-    }
-    .card-title {
-      font-size: .8rem; font-weight: 700; letter-spacing: .05em;
-      text-transform: uppercase; color: var(--text2);
-      margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
-    }
-
-    .form-field { margin-bottom: 16px; }
-    label { display: block; font-size: .75rem; font-weight: 600; color: var(--text2); margin-bottom: 8px; }
+    .form-field { margin-bottom: 14px; }
+    label { display: block; font-size: .75rem; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
     input, select {
-      width: 100%; background: var(--bg);
-      border: 1px solid var(--border2);
-      border-radius: 8px; color: var(--text);
-      padding: 10px 14px; outline: none; transition: all 0.2s;
+      width: 100%; background: var(--bg); border: 1px solid var(--border2);
+      border-radius: 8px; color: var(--text); padding: 10px 14px; outline: none; transition: all 0.2s;
+      font-family: var(--font-sans); font-size: .9rem;
     }
-    input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,.1); }
-
+    input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,.1); }
     .interval-row { display: flex; gap: 10px; }
-    .btn {
-      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-      font-family: var(--font-sans); font-weight: 600; font-size: .85rem;
-      border: none; border-radius: 8px; cursor: pointer;
-      padding: 10px 16px; transition: all 0.2s;
-    }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-family: var(--font-sans); font-weight: 600; font-size: .85rem; border: none; border-radius: 8px; cursor: pointer; padding: 10px 16px; transition: all 0.2s; }
     .btn-primary { background: var(--accent); color: #fff; width: 100%; }
     .btn-primary:hover { background: #2563eb; transform: translateY(-1px); }
     .btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border2); }
     .btn-ghost:hover { background: var(--surface2); color: var(--text); }
     .btn-danger { background: rgba(239,68,68,.1); color: var(--red); border: 1px solid rgba(239,68,68,.2); }
     .btn-danger:hover { background: rgba(239,68,68,0.2); }
+    .btn-sm { padding: 4px 8px; font-size: .78rem; }
 
-    /* ── Stats ─────────────────────────────────────────────────────────────── */
-    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .stat-item { background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; padding: 16px; }
-    .stat-value { font-size: 1.8rem; font-weight: 800; font-family: var(--font-mono); color: var(--text); }
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .stat-item { background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; padding: 14px; }
+    .stat-value { font-size: 1.6rem; font-weight: 800; font-family: var(--font-mono); color: var(--text); }
     .stat-label { font-size: .65rem; color: var(--text2); text-transform: uppercase; margin-top: 4px; }
 
-    /* ── Main content ──────────────────────────────────────────────────────── */
+    /* SSL Card */
+    .ssl-row { display: flex; gap: 8px; }
+    .ssl-row input { flex: 1; }
+    .ssl-result { margin-top: 12px; padding: 12px; border-radius: 8px; font-size: .82rem; display: none; }
+    .ssl-ok { background: rgba(34,197,94,.08); border: 1px solid rgba(34,197,94,.2); color: var(--green); }
+    .ssl-warn { background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.2); color: var(--yellow); }
+    .ssl-err { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); color: var(--red); }
+    .ssl-detail { color: var(--text2); font-size: .78rem; margin-top: 6px; font-family: var(--font-mono); }
+
     .main-content { display: flex; flex-direction: column; background: var(--bg); }
-    .tab-bar {
-      display: flex; align-items: center; gap: 4px; padding: 20px 30px 0;
-      background: var(--surface); border-bottom: 1px solid var(--border);
-    }
-    .tab-btn {
-      padding: 12px 20px; font-size: .9rem; font-weight: 600; color: var(--text2);
-      background: transparent; border: none; cursor: pointer; border-bottom: 3px solid transparent;
-      transition: all 0.2s;
-    }
+    .tab-bar { display: flex; align-items: center; gap: 4px; padding: 20px 30px 0; background: var(--surface); border-bottom: 1px solid var(--border); }
+    .tab-btn { padding: 12px 20px; font-size: .9rem; font-weight: 600; color: var(--text2); background: transparent; border: none; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; }
     .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
     .tab-count { background: var(--surface2); padding: 2px 8px; border-radius: 10px; font-size: .7rem; margin-left: 6px; }
 
     .tab-panel { display: none; padding: 30px; flex: 1; overflow-y: auto; }
     .tab-panel.active { display: block; }
 
-    /* ── Tables & Lists ────────────────────────────────────────────────────── */
     .table-wrap { border: 1px solid var(--border); border-radius: var(--radius); overflow-x: auto; background: var(--surface); }
     table { width: 100%; border-collapse: collapse; min-width: 600px; }
     thead th { padding: 14px 20px; text-align: left; font-size: .75rem; color: var(--text2); text-transform: uppercase; border-bottom: 1px solid var(--border); }
     tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
     tbody tr:hover { background: rgba(255,255,255,0.02); }
-    td { padding: 16px 20px; vertical-align: middle; }
-
+    td { padding: 14px 20px; vertical-align: middle; }
     .job-name { font-weight: 700; font-size: .95rem; color: var(--text); }
-    .job-url { font-family: var(--font-mono); font-size: .8rem; color: var(--accent); display: block; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .job-url { font-family: var(--font-mono); font-size: .78rem; color: var(--accent); display: block; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    .badge { padding: 4px 10px; border-radius: 20px; font-size: .7rem; font-weight: 700; font-family: var(--font-mono); }
+    .badge { padding: 3px 10px; border-radius: 20px; font-size: .7rem; font-weight: 700; font-family: var(--font-mono); }
     .badge-blue { background: rgba(59,130,246,0.1); color: var(--accent); border: 1px solid rgba(59,130,246,0.2); }
     .badge-green { background: rgba(34,197,94,0.1); color: var(--green); border: 1px solid rgba(34,197,94,0.2); }
     .badge-red { background: rgba(239,68,68,0.1); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+    .badge-yellow { background: rgba(245,158,11,0.1); color: var(--yellow); border: 1px solid rgba(245,158,11,0.2); }
+    .badge-gray { background: rgba(139,154,181,0.1); color: var(--text2); border: 1px solid rgba(139,154,181,0.2); }
 
-    .log-entry { display: flex; gap: 15px; padding: 14px 20px; border-bottom: 1px solid var(--border); align-items: center; }
-    .log-ts { font-family: var(--font-mono); font-size: .8rem; color: var(--text3); min-width: 150px; }
-    .log-url { font-family: var(--font-mono); font-size: .8rem; color: var(--text2); flex: 1; word-break: break-all; }
+    .log-entry { display: flex; gap: 15px; padding: 14px 20px; border-bottom: 1px solid var(--border); align-items: center; flex-wrap: wrap; }
+    .log-ts { font-family: var(--font-mono); font-size: .78rem; color: var(--text3); min-width: 150px; }
+    .log-url { font-family: var(--font-mono); font-size: .78rem; color: var(--text2); flex: 1; word-break: break-all; }
 
-    /* ── Overlays ──────────────────────────────────────────────────────────── */
-    .modal-overlay, .drawer-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000;
-      display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px);
-      opacity: 0; pointer-events: none; transition: 0.3s;
-    }
+    .modal-overlay, .drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); opacity: 0; pointer-events: none; transition: 0.3s; }
     .modal-overlay.open, .drawer-overlay.open { opacity: 1; pointer-events: all; }
     .modal { background: #111520; border: 1px solid var(--border2); border-radius: 16px; padding: 32px; width: 90%; max-width: 500px; box-shadow: 0 0 100px rgba(0,0,0,0.8); }
-
-    .drawer {
-      position: fixed; right: 0; top: 0; bottom: 0; width: 100%; max-width: 550px;
-      background: var(--surface); border-left: 1px solid var(--border2);
-      transform: translateX(100%); transition: 0.3s; display: flex; flex-direction: column;
-    }
+    .drawer { position: fixed; right: 0; top: 0; bottom: 0; width: 100%; max-width: 550px; background: var(--surface); border-left: 1px solid var(--border2); transform: translateX(100%); transition: 0.3s; display: flex; flex-direction: column; }
     .drawer-overlay.open .drawer { transform: translateX(0); }
     .drawer-header { padding: 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
 
@@ -188,18 +134,14 @@
     @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     .toast-success { background: var(--green); color: #fff; }
     .toast-error { background: var(--red); color: #fff; }
-
     .empty-state { padding: 80px 20px; text-align: center; color: var(--text3); }
 
-    /* ── Responsive ────────────────────────────────────────────────────────── */
     @media (max-width: 800px) {
       .page { display: block; }
       .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
       .topbar { padding: 0 16px; }
       .tab-bar { padding: 10px 16px 0; overflow-x: auto; }
       th:nth-child(2), td:nth-child(2), th:nth-child(4), td:nth-child(4) { display: none; }
-      .log-entry { flex-direction: column; align-items: flex-start; gap: 5px; }
-      .log-ts { min-width: 0; }
     }
   </style>
 </head>
@@ -210,34 +152,51 @@
     <div class="logo-icon">⚡</div>
     Cron<span>Pulse</span>
   </div>
-  <div class="health-badge">
-    <div class="health-dot"></div>
-    <span id="healthStatus">Connecting...</span>
+  <div class="topbar-right">
+    <div class="health-badge">
+      <div class="health-dot"></div>
+      <span id="healthStatus">Connecting...</span>
+    </div>
+    <div class="user-badge" id="userBadge"></div>
+    <button class="btn-logout" onclick="doLogout()">Logout</button>
   </div>
 </header>
 
 <div class="page">
   <aside class="sidebar">
+    <!-- Create Job -->
     <div class="card">
-      <div class="card-title">Create Job</div>
+      <div class="card-title">⚙ Create Job</div>
       <div class="form-field"><label>Job Name</label><input type="text" id="jobName" placeholder="e.g. Keep Alive" /></div>
       <div class="form-field"><label>Target URL</label><input type="url" id="jobUrl" placeholder="https://..." /></div>
       <div class="form-field">
-        <label>Interval</label>
+        <label>Run Every</label>
         <div class="interval-row">
-          <input type="number" id="jobInterval" value="5" />
+          <input type="number" id="jobInterval" value="5" min="1" style="max-width:90px" />
           <select id="jobIntervalUnit">
             <option value="minutes">Minutes</option>
             <option value="seconds">Seconds</option>
             <option value="hours">Hours</option>
+            <option value="days">Days</option>
           </select>
         </div>
       </div>
-      <button class="btn btn-primary" onclick="createJob()">Schedule Now</button>
+      <button class="btn btn-primary" onclick="createJob()">⚡ Schedule Now</button>
     </div>
 
+    <!-- SSL Checker -->
     <div class="card">
-      <div class="card-title">System Status</div>
+      <div class="card-title">🔒 SSL Checker</div>
+      <div class="ssl-row">
+        <input type="text" id="sslHost" placeholder="example.com" />
+        <button class="btn btn-ghost btn-sm" onclick="checkSSL()" style="white-space:nowrap">Check</button>
+      </div>
+      <div class="ssl-result" id="sslResult"></div>
+    </div>
+
+    <!-- Stats -->
+    <div class="card">
+      <div class="card-title">📊 System Status</div>
       <div class="stats-grid">
         <div class="stat-item"><div class="stat-value" id="statActive">0</div><div class="stat-label">Active Jobs</div></div>
         <div class="stat-item"><div class="stat-value" id="statLogs">0</div><div class="stat-label">Total Logs</div></div>
@@ -250,7 +209,7 @@
     <div class="tab-bar">
       <button class="tab-btn active" onclick="switchTab('jobs', this)">Managed Jobs <span class="tab-count" id="tabJobCount">0</span></button>
       <button class="tab-btn" onclick="switchTab('logs', this)">Execution Logs <span class="tab-count" id="tabLogCount">0</span></button>
-      <button class="btn btn-ghost" onclick="refreshAll()" style="margin-left:auto; padding: 6px 12px; font-size: 0.75rem;">Refresh</button>
+      <button class="btn btn-ghost" onclick="refreshAll()" style="margin-left:auto; padding:6px 12px; font-size:0.75rem;">↺ Refresh</button>
     </div>
 
     <div id="tab-jobs" class="tab-panel active">
@@ -262,7 +221,7 @@
               <th>Target URL</th>
               <th>Interval</th>
               <th>Next Ping</th>
-              <th style="text-align:right">Action</th>
+              <th style="text-align:right">Actions</th>
             </tr>
           </thead>
           <tbody id="jobsTable">
@@ -273,14 +232,12 @@
     </div>
 
     <div id="tab-logs" class="tab-panel">
-      <div class="logs-container" id="logsContainer">
-        <div class="empty-state">Loading logs...</div>
-      </div>
+      <div id="logsContainer"><div class="empty-state">Loading logs...</div></div>
     </div>
   </main>
 </div>
 
-<!-- Modal: Edit -->
+<!-- Edit Modal -->
 <div class="modal-overlay" id="editModal">
   <div class="modal">
     <h3 style="margin-bottom:20px">Edit Cron Job</h3>
@@ -288,13 +245,14 @@
     <div class="form-field"><label>Job Name</label><input type="text" id="editName" /></div>
     <div class="form-field"><label>Target URL</label><input type="url" id="editUrl" /></div>
     <div class="form-field">
-      <label>Interval</label>
+      <label>Run Every</label>
       <div class="interval-row">
-        <input type="number" id="editInterval" />
+        <input type="number" id="editInterval" min="1" style="max-width:90px" />
         <select id="editIntervalUnit">
-          <option value="seconds">Seconds</option>
           <option value="minutes">Minutes</option>
+          <option value="seconds">Seconds</option>
           <option value="hours">Hours</option>
+          <option value="days">Days</option>
         </select>
       </div>
     </div>
@@ -305,7 +263,7 @@
   </div>
 </div>
 
-<!-- Drawer: Job Logs -->
+<!-- Logs Drawer -->
 <div class="drawer-overlay" id="logsDrawer">
   <div class="drawer">
     <div class="drawer-header">
@@ -315,9 +273,9 @@
       </div>
       <button class="btn btn-ghost" onclick="closeDrawer()" style="padding:4px 8px">✕</button>
     </div>
-    <div class="drawer-body" id="drawerBody" style="padding:20px; overflow-y:auto; flex:1;"></div>
+    <div id="drawerBody" style="padding:20px; overflow-y:auto; flex:1;"></div>
     <div style="padding:20px; border-top:1px solid var(--border); text-align:right">
-        <button class="btn btn-danger" id="btnClearLogs">Clear All Logs</button>
+      <button class="btn btn-danger" id="btnClearLogs">Clear All Logs</button>
     </div>
   </div>
 </div>
@@ -325,25 +283,17 @@
 <div id="toastContainer"></div>
 
 <script>
-// ── Core API ───────────────────────────────────────────────────────────────
-async function apiCall(url, options = {}) {
-  try {
-    const r = await fetch(url, options);
-    const contentType = r.headers.get("content-type");
-    const data = (contentType && contentType.includes("application/json")) ? await r.json() : null;
-    if (!r.ok) throw new Error(data?.detail || `Server error: ${r.status}`);
-    return data;
-  } catch (e) {
-    console.error(`API Error: ${url}`, e);
-    throw e;
-  }
-}
-
 // ── State ──────────────────────────────────────────────────────────────────
-let jobsMap = {};
-let allLogs = [];
+let jobsMap = {}, allLogs = [], currentUser = null;
 
-// ── UI Helpers ─────────────────────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────────────
+async function apiCall(url, opts = {}) {
+  const r = await fetch(url, opts);
+  const ct = r.headers.get('content-type');
+  const data = ct && ct.includes('application/json') ? await r.json() : null;
+  if (!r.ok) throw new Error(data?.detail || `Server error: ${r.status}`);
+  return data;
+}
 function toast(msg, type = 'success') {
   const c = document.getElementById('toastContainer'); if (!c) return;
   const e = document.createElement('div');
@@ -352,35 +302,87 @@ function toast(msg, type = 'success') {
   c.appendChild(e);
   setTimeout(() => { e.style.opacity = '0'; setTimeout(() => e.remove(), 300); }, 3000);
 }
-
 function escHtml(s) {
-  if (!s) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
-
 function fmtRelTime(iso) {
   if (!iso) return '—';
-  const diff = new Date(iso) - Date.now();
-  const abs = Math.abs(diff);
+  const diff = new Date(iso) - Date.now(), abs = Math.abs(diff);
   if (abs < 60000) return diff < 0 ? 'just now' : `${Math.round(abs/1000)}s`;
   if (abs < 3600000) return `${diff < 0 ? '' : 'in '}${Math.round(abs/60000)}m`;
   return new Date(iso).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
 }
-
+function fmtInterval(s) {
+  if (s % 86400 === 0) return `${s/86400}d`;
+  if (s % 3600 === 0) return `${s/3600}h`;
+  if (s % 60 === 0) return `${s/60}m`;
+  return `${s}s`;
+}
+function toSeconds(v, u) {
+  v = parseInt(v);
+  if (u === 'minutes') return v * 60;
+  if (u === 'hours') return v * 3600;
+  if (u === 'days') return v * 86400;
+  return v;
+}
 function fromSeconds(s) {
+  if (s % 86400 === 0) return { val: s/86400, unit: 'days' };
   if (s % 3600 === 0) return { val: s/3600, unit: 'hours' };
   if (s % 60 === 0) return { val: s/60, unit: 'minutes' };
   return { val: s, unit: 'seconds' };
 }
 
-function toSeconds(v, u) {
-  v = parseInt(v);
-  if (u === 'minutes') return v * 60;
-  if (u === 'hours') return v * 3600;
-  return v;
+// ── Auth ───────────────────────────────────────────────────────────────────
+async function loadUser() {
+  try {
+    currentUser = await apiCall('/api/me');
+    const b = document.getElementById('userBadge');
+    if (currentUser.is_admin) {
+      b.className = 'user-badge admin';
+      b.innerHTML = '👑 Admin';
+    } else {
+      b.className = 'user-badge user';
+      b.innerHTML = '👤 User';
+    }
+  } catch { window.location.href = '/login'; }
+}
+async function doLogout() {
+  await fetch('/api/auth/logout', { method: 'POST' });
+  window.location.href = '/login';
 }
 
-// ── App Logic ──────────────────────────────────────────────────────────────
+// ── SSL ────────────────────────────────────────────────────────────────────
+async function checkSSL() {
+  const host = document.getElementById('sslHost').value.trim();
+  const result = document.getElementById('sslResult');
+  if (!host) return;
+  result.style.display = 'none';
+  result.className = 'ssl-result';
+  result.textContent = 'Checking...';
+  result.style.display = 'block';
+  try {
+    const d = await apiCall(`/api/ssl?hostname=${encodeURIComponent(host)}`);
+    if (!d.valid) {
+      result.className = 'ssl-result ssl-err';
+      result.innerHTML = `❌ SSL Error<div class="ssl-detail">${escHtml(d.error)}</div>`;
+    } else if (d.days_left <= 14) {
+      result.className = 'ssl-result ssl-err';
+      result.innerHTML = `⚠️ Expires in <b>${d.days_left}</b> days — URGENT!<div class="ssl-detail">${new Date(d.expires).toLocaleDateString()}</div>`;
+    } else if (d.days_left <= 30) {
+      result.className = 'ssl-result ssl-warn';
+      result.innerHTML = `⏳ Expires in <b>${d.days_left}</b> days<div class="ssl-detail">${new Date(d.expires).toLocaleDateString()}</div>`;
+    } else {
+      result.className = 'ssl-result ssl-ok';
+      result.innerHTML = `✅ Valid — <b>${d.days_left}</b> days left<div class="ssl-detail">Expires ${new Date(d.expires).toLocaleDateString()}</div>`;
+    }
+  } catch (e) {
+    result.className = 'ssl-result ssl-err';
+    result.textContent = `Error: ${e.message}`;
+  }
+}
+document.getElementById('sslHost').addEventListener('keydown', e => { if (e.key === 'Enter') checkSSL(); });
+
+// ── Health ─────────────────────────────────────────────────────────────────
 async function checkHealth() {
   try {
     const d = await apiCall('/health');
@@ -392,41 +394,36 @@ async function checkHealth() {
   }
 }
 
+// ── Jobs ───────────────────────────────────────────────────────────────────
 async function fetchJobs() {
   try {
     const jobs = await apiCall('/api/jobs') || [];
     jobsMap = {};
     jobs.forEach(j => jobsMap[j.id] = j);
-
     const sA = document.getElementById('statActive'); if(sA) sA.textContent = jobs.length;
-    const tC = document.getElementById('tabJobCount'); if(tC) tC.textContent = jobs.length;
-
+    const tJ = document.getElementById('tabJobCount'); if(tJ) tJ.textContent = jobs.length;
     const tbody = document.getElementById('jobsTable');
     if (!tbody) return;
-
-    if (!jobs.length) {
-      tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state">No cron jobs found. Create your first one!</div></td></tr>';
-      return;
-    }
-
+    if (!jobs.length) { tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state">No cron jobs found. Create your first one!</div></td></tr>'; return; }
     tbody.innerHTML = jobs.map(j => `
       <tr>
-        <td><div class="job-name">${escHtml(j.name || 'Untitled')}</div></td>
+        <td>
+          <div class="job-name">${escHtml(j.name || 'Untitled')}</div>
+          ${j.is_legacy ? '<span class="badge badge-gray" style="font-size:.65rem">legacy</span>' : ''}
+        </td>
         <td><a href="${escHtml(j.url)}" target="_blank" class="job-url">${escHtml(j.url)}</a></td>
-        <td><span class="badge badge-blue">${j.interval_seconds}s</span></td>
-        <td><span class="next-run" data-ts="${j.next_run || ''}" style="font-family:var(--font-mono); font-size:0.8rem">${fmtRelTime(j.next_run)}</span></td>
+        <td><span class="badge badge-blue">${fmtInterval(j.interval_seconds)}</span></td>
+        <td><span class="next-run" data-ts="${j.next_run||''}">${fmtRelTime(j.next_run)}</span></td>
         <td style="text-align:right">
           <div style="display:flex; gap:6px; justify-content:flex-end">
-            <button class="btn btn-ghost btn-sm" style="padding:4px 8px" onclick="openJobLogs('${j.id}','${escHtml(j.name)}')">Logs</button>
-            <button class="btn btn-ghost btn-sm" style="padding:4px 8px" onclick="openEdit('${j.id}')">Edit</button>
-            <button class="btn btn-danger btn-sm" style="padding:4px 8px" onclick="deleteJob('${j.id}')">✕</button>
+            <button class="btn btn-ghost btn-sm" onclick="openJobLogs('${j.id}','${escHtml(j.name)}')">Logs</button>
+            <button class="btn btn-ghost btn-sm" onclick="openEdit('${j.id}')">Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteJob('${j.id}')">✕</button>
           </div>
         </td>
       </tr>
     `).join('');
-  } catch (e) {
-    toast("Failed to update jobs list", "error");
-  }
+  } catch (e) { toast("Failed to load jobs", "error"); }
 }
 
 async function fetchLogs() {
@@ -434,19 +431,16 @@ async function fetchLogs() {
     allLogs = await apiCall('/api/logs?limit=100') || [];
     const sL = document.getElementById('statLogs'); if(sL) sL.textContent = allLogs.length;
     const tL = document.getElementById('tabLogCount'); if(tL) tL.textContent = allLogs.length;
-
     const successes = allLogs.filter(l => l.success).length;
     const rate = allLogs.length ? Math.round((successes/allLogs.length)*100) : 0;
     const sS = document.getElementById('statSuccess'); if(sS) sS.textContent = `${rate}%`;
-
     const container = document.getElementById('logsContainer');
     if (!container) return;
     if (!allLogs.length) { container.innerHTML = '<div class="empty-state">No execution logs yet.</div>'; return; }
-
     container.innerHTML = allLogs.map(l => `
       <div class="log-entry">
         <span class="log-ts">${new Date(l.timestamp).toLocaleString()}</span>
-        <span class="badge ${l.success ? 'badge-green' : 'badge-red'}" style="min-width:60px; text-align:center">${l.status || 'ERR'}</span>
+        <span class="badge ${l.success ? 'badge-green' : 'badge-red'}" style="min-width:60px; text-align:center">${l.status||'ERR'}</span>
         <span class="log-url">${escHtml(l.url)}</span>
         ${l.error ? `<small style="color:var(--red); width:100%; margin-left:165px">⚠ ${escHtml(l.error)}</small>` : ''}
       </div>
@@ -459,34 +453,24 @@ async function createJob() {
   const url = document.getElementById('jobUrl').value.trim();
   const val = document.getElementById('jobInterval').value;
   const unit = document.getElementById('jobIntervalUnit').value;
-
   if (!name || !url) return toast("Name and URL are required", "error");
-
   try {
-    await apiCall('/api/jobs', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, url, interval_seconds: toSeconds(val, unit) })
-    });
+    await apiCall('/api/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, url, interval_seconds: toSeconds(val, unit) }) });
     toast("Job scheduled successfully");
     document.getElementById('jobName').value = "";
     document.getElementById('jobUrl').value = "";
     await fetchJobs();
-  } catch (e) {
-    toast(e.message, "error");
-  }
+  } catch (e) { toast(e.message, "error"); }
 }
 
 async function deleteJob(id) {
-  if (!confirm("Are you sure you want to delete this job and all its logs?")) return;
+  if (!confirm("Delete this job and all its logs?")) return;
   try {
     await apiCall(`/api/jobs/${id}`, { method: 'DELETE' });
     toast("Job deleted");
-    await fetchJobs();
-    await fetchLogs();
-  } catch (e) {
-    toast("Deletion failed", "error");
-  }
+    await fetchJobs(); await fetchLogs();
+  } catch (e) { toast("Deletion failed", "error"); }
 }
 
 function openEdit(id) {
@@ -507,46 +491,28 @@ async function saveEdit() {
   const url = document.getElementById('editUrl').value.trim();
   const val = document.getElementById('editInterval').value;
   const unit = document.getElementById('editIntervalUnit').value;
-
   try {
-    await apiCall(`/api/jobs/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, url, interval_seconds: toSeconds(val, unit) })
-    });
-    toast("Job updated");
-    closeModal();
-    await fetchJobs();
-  } catch (e) {
-    toast("Update failed", "error");
-  }
+    await apiCall(`/api/jobs/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, url, interval_seconds: toSeconds(val, unit) }) });
+    toast("Job updated"); closeModal(); await fetchJobs();
+  } catch (e) { toast("Update failed", "error"); }
 }
 
 async function openJobLogs(id, name) {
   const drawer = document.getElementById('logsDrawer');
   const body = document.getElementById('drawerBody');
-  const title = document.getElementById('drawerTitle');
-  const subtitle = document.getElementById('drawerSubtitle');
-  const clearBtn = document.getElementById('btnClearLogs');
-
-  title.textContent = name || 'Job Logs';
-  subtitle.textContent = `ID: ${id}`;
-  body.innerHTML = '<div class="empty-state">Loading history...</div>';
+  document.getElementById('drawerTitle').textContent = name || 'Job Logs';
+  document.getElementById('drawerSubtitle').textContent = `ID: ${id}`;
+  body.innerHTML = '<div class="empty-state">Loading...</div>';
   drawer.classList.add('open');
-
-  clearBtn.onclick = async () => {
-      if(!confirm("Clear all history for this job?")) return;
-      try {
-          await apiCall(`/api/jobs/${id}/logs`, { method: 'DELETE' });
-          toast("Logs cleared");
-          openJobLogs(id, name);
-          fetchLogs();
-      } catch { toast("Failed to clear logs", "error"); }
+  document.getElementById('btnClearLogs').onclick = async () => {
+    if (!confirm("Clear all logs for this job?")) return;
+    try { await apiCall(`/api/jobs/${id}/logs`, { method: 'DELETE' }); toast("Logs cleared"); openJobLogs(id, name); fetchLogs(); }
+    catch { toast("Failed to clear logs", "error"); }
   };
-
   try {
     const logs = await apiCall(`/api/jobs/${id}/logs?limit=50`) || [];
-    if (!logs.length) { body.innerHTML = '<div class="empty-state">No logs found for this job.</div>'; return; }
+    if (!logs.length) { body.innerHTML = '<div class="empty-state">No logs for this job.</div>'; return; }
     body.innerHTML = logs.map(l => `
       <div style="padding:12px; border-bottom:1px solid var(--border2); font-size:0.85rem">
         <div style="display:flex; justify-content:space-between; margin-bottom:4px">
@@ -556,9 +522,7 @@ async function openJobLogs(id, name) {
         ${l.error ? `<div style="color:var(--red); font-size:0.75rem">⚠ ${escHtml(l.error)}</div>` : '<div style="color:var(--text3); font-size:0.75rem">Success</div>'}
       </div>
     `).join('');
-  } catch {
-    body.innerHTML = '<div class="empty-state" style="color:var(--red)">Failed to load logs.</div>';
-  }
+  } catch { body.innerHTML = '<div class="empty-state" style="color:var(--red)">Failed to load logs.</div>'; }
 }
 function closeDrawer() { document.getElementById('logsDrawer').classList.remove('open'); }
 
@@ -570,35 +534,25 @@ function switchTab(tab, btn) {
   if (tab === 'logs') fetchLogs();
 }
 
-async function refreshAll() {
-  await Promise.all([checkHealth(), fetchJobs(), fetchLogs()]);
-}
+async function refreshAll() { await Promise.all([checkHealth(), fetchJobs(), fetchLogs()]); }
 
-// ── Initialization ─────────────────────────────────────────────────────────
+// ── Timers ─────────────────────────────────────────────────────────────────
 setInterval(() => {
   document.querySelectorAll('.next-run').forEach(el => {
     const ts = el.getAttribute('data-ts');
     if (ts) el.textContent = fmtRelTime(ts);
   });
 }, 1000);
-
-// Polling
 setInterval(fetchJobs, 10000);
 setInterval(fetchLogs, 15000);
 setInterval(checkHealth, 30000);
 
-// Initial Load
-document.addEventListener('DOMContentLoaded', () => {
-    checkHealth();
-    fetchJobs();
-    fetchLogs();
+// ── Init ───────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadUser();
+  checkHealth(); fetchJobs(); fetchLogs();
 });
-
-// Close overlays on escape
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeModal(); closeDrawer(); }
-});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeDrawer(); } });
 </script>
-
 </body>
 </html>

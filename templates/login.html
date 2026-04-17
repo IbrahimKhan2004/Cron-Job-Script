@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CronPulse — Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0b0d12; --surface: #111520; --border: #1e2435; --border2: #252d42;
+      --accent: #3b82f6; --accent2: #6366f1; --green: #22c55e; --red: #ef4444;
+      --text: #e2e8f0; --text2: #8b9ab5; --text3: #4a5568;
+    }
+    body { font-family: 'Sora', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: 16px; padding: 40px 36px; width: 100%; max-width: 420px;
+      box-shadow: 0 0 60px rgba(59,130,246,0.06);
+    }
+    .logo { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; justify-content: center; }
+    .logo-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; box-shadow: 0 0 20px rgba(59,130,246,0.4);
+    }
+    .logo-text { font-size: 1.5rem; font-weight: 800; }
+    .logo-text span { color: var(--accent); }
+    h2 { font-size: 1rem; font-weight: 600; color: var(--text2); margin-bottom: 24px; text-align: center; }
+    label { display: block; font-size: .75rem; font-weight: 600; color: var(--text2); margin-bottom: 8px; }
+    input {
+      width: 100%; background: var(--bg); border: 1px solid var(--border2);
+      border-radius: 8px; color: var(--text); padding: 12px 16px; outline: none;
+      font-family: 'JetBrains Mono', monospace; font-size: 1rem; transition: all 0.2s;
+      letter-spacing: 0.05em;
+    }
+    input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,.1); }
+    .btn {
+      width: 100%; margin-top: 20px; padding: 13px; border: none; border-radius: 8px;
+      font-family: 'Sora', sans-serif; font-weight: 700; font-size: .95rem;
+      background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .error { margin-top: 14px; padding: 10px 14px; border-radius: 8px; background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); color: var(--red); font-size: .85rem; display: none; }
+    .hint { margin-top: 16px; text-align: center; font-size: .75rem; color: var(--text3); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <div class="logo-text">Cron<span>Pulse</span></div>
+    </div>
+    <h2>Enter your User ID to continue</h2>
+    <label>User ID</label>
+    <input type="password" id="userId" placeholder="••••••••••" autocomplete="current-password" />
+    <button class="btn" id="loginBtn" onclick="doLogin()">Sign In</button>
+    <div class="error" id="errMsg"></div>
+    <p class="hint">Access is restricted to authorized users only.</p>
+  </div>
+  <script>
+    document.getElementById('userId').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+    async function doLogin() {
+      const uid = document.getElementById('userId').value.trim();
+      const btn = document.getElementById('loginBtn');
+      const err = document.getElementById('errMsg');
+      err.style.display = 'none';
+      if (!uid) { err.textContent = 'Please enter your User ID.'; err.style.display = 'block'; return; }
+      btn.disabled = true; btn.textContent = 'Signing in...';
+      try {
+        const r = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: uid })
+        });
+        if (!r.ok) { const d = await r.json(); throw new Error(d.detail || 'Invalid User ID'); }
+        window.location.href = '/';
+      } catch (e) {
+        err.textContent = e.message;
+        err.style.display = 'block';
+        btn.disabled = false; btn.textContent = 'Sign In';
+      }
+    }
+  </script>
+</body>
+</html>
