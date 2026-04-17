@@ -43,7 +43,7 @@ To run this project, you will need to add the following environment variables:
 
 3.  **Run the application**:
     ```bash
-    python3 main.py
+    python3 app.py
     ```
     The application will be available at `http://localhost:8080`.
 
@@ -51,7 +51,7 @@ To run this project, you will need to add the following environment variables:
 
 ### Render / Heroku
 This project is pre-configured for deployment on Render or Heroku.
--   The `Procfile` defines the entry point: `web: python3 main.py`.
+-   The `Procfile` defines the entry point: `web: python3 app.py`.
 -   Ensure you set the `MONGODB_URI` in your environment settings.
 
 ## 🛡️ Non-Regressive Guarantee
