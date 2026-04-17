@@ -23,6 +23,13 @@ from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
 from status import create_status_router
+from time_scheduler import (
+    schedule_daily_job,
+    unschedule_daily_job,
+    get_next_run_time_for_daily,
+    SUPPORTED_TIMEZONES,
+    AVAILABLE_HOURS,
+)
 
 # ─── Settings ─────────────────────────────────────────────────────────────────
 
@@ -73,6 +80,31 @@ async def run_cron_job(job_id: str, url: str) -> None:
         if db is not None:
             await db.logs.insert_one(log_entry)
 
+async def run_daily_job(job_id: str, url: str) -> None:
+    """Run a daily scheduled job (same as cron but tagged separately)."""
+    started_at = datetime.now(timezone.utc)
+    log_entry: dict = {"job_id": job_id, "url": url, "timestamp": started_at, "job_type": "daily"}
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+                body_preview = (await resp.text())[:200]
+                log_entry.update({
+                    "status": resp.status,
+                    "success": 200 <= resp.status < 400,
+                    "response_preview": body_preview,
+                    "error": None,
+                })
+                print(f"[DAILY] ✓ {url}  →  HTTP {resp.status}")
+    except asyncio.TimeoutError:
+        log_entry.update({"status": "timeout", "success": False, "error": "Request timed out"})
+        print(f"[DAILY] ✗ {url}  →  TIMEOUT")
+    except Exception as exc:
+        log_entry.update({"status": "error", "success": False, "error": str(exc)})
+        print(f"[DAILY] ✗ {url}  →  ERROR: {exc}")
+    finally:
+        if db is not None:
+            await db.logs.insert_one(log_entry)
+
 # ─── SSL Checker ──────────────────────────────────────────────────────────────
 
 async def check_ssl(hostname: str) -> dict:
@@ -118,7 +150,8 @@ async def lifespan(app: FastAPI):
     await db.logs.create_index([("job_id", 1), ("timestamp", -1)])
     await db.logs.create_index([("timestamp", -1)])
 
-    async for job in db.jobs.find():
+    # Load interval-based jobs (existing)
+    async for job in db.jobs.find({"job_type": {"$ne": "daily"}}):
         job_id = str(job["_id"])
         url = job.get("url")
         interval = job.get("interval_seconds")
@@ -126,6 +159,17 @@ async def lifespan(app: FastAPI):
             _schedule_job(job_id, url, interval)
         else:
             print(f"[APP] WARNING: Skipping job {job_id} due to missing fields")
+
+    # Load daily jobs (new)
+    async for job in db.jobs.find({"job_type": "daily"}):
+        job_id = str(job["_id"])
+        url = job.get("url")
+        hour = job.get("hour")
+        tz = job.get("timezone", "UTC")
+        if url and hour is not None:
+            _schedule_daily_job_wrapper(job_id, url, hour, tz)
+        else:
+            print(f"[APP] WARNING: Skipping daily job {job_id} due to missing fields")
 
     scheduler.start()
     print(f"[APP] Scheduler started with {len(scheduler.get_jobs())} job(s).")
@@ -145,6 +189,14 @@ def _unschedule_job(job_id: str) -> None:
         scheduler.remove_job(job_id)
     except Exception:
         pass
+
+def _schedule_daily_job_wrapper(job_id: str, url: str, hour: int, tz_name: str) -> None:
+    """Wrapper to schedule daily job using time_scheduler module."""
+    schedule_daily_job(scheduler, job_id, run_daily_job, hour, tz_name, [job_id, url])
+
+def _unschedule_daily_job_wrapper(job_id: str) -> None:
+    """Wrapper to unschedule daily job."""
+    unschedule_daily_job(scheduler, job_id)
 
 # ─── FastAPI app ──────────────────────────────────────────────────────────────
 
@@ -172,6 +224,20 @@ class JobUpdate(BaseModel):
     url: Optional[str] = None
     name: Optional[str] = Field(None, min_length=1, max_length=80)
     interval_seconds: Optional[int] = Field(None, gt=0)
+
+class DailyJobIn(BaseModel):
+    """Create a daily job at specific hour in specific timezone."""
+    url: str = Field(..., description="Target URL to ping")
+    name: str = Field(..., min_length=1, max_length=80)
+    hour: int = Field(..., ge=0, le=23, description="0-23, hour of day")
+    timezone: str = Field(..., description="'UTC' or 'IST'")
+
+class DailyJobUpdate(BaseModel):
+    """Update a daily job."""
+    url: Optional[str] = None
+    name: Optional[str] = Field(None, min_length=1, max_length=80)
+    hour: Optional[int] = Field(None, ge=0, le=23)
+    timezone: Optional[str] = None
 
 class LoginIn(BaseModel):
     user_id: str
@@ -292,6 +358,133 @@ async def update_job(job_id: str, job_update: JobUpdate, session_id: Optional[st
     if new_url and new_interval > 0:
         _schedule_job(job_id, new_url, new_interval)
     return {"status": "updated"}
+
+# ─── Daily Jobs (Timezone-aware) ──────────────────────────────────────────────
+
+@app.post("/api/daily-jobs", status_code=201)
+async def create_daily_job(job: DailyJobIn, session_id: Optional[str] = Cookie(default=None)):
+    """Create a daily job at specific hour in specific timezone."""
+    uid = require_user(session_id)
+    
+    # Validate timezone
+    if job.timezone not in SUPPORTED_TIMEZONES:
+        raise HTTPException(status_code=400, detail=f"Unsupported timezone. Use: {list(SUPPORTED_TIMEZONES.keys())}")
+    
+    now = datetime.now(timezone.utc)
+    job_dict = {
+        "name": job.name,
+        "url": job.url,
+        "hour": job.hour,
+        "timezone": job.timezone,
+        "created_at": now,
+        "owner_id": uid,
+        "job_type": "daily",
+    }
+    result = await db.jobs.insert_one(job_dict)
+    job_id = str(result.inserted_id)
+    
+    # Schedule the daily job
+    _schedule_daily_job_wrapper(job_id, job.url, job.hour, job.timezone)
+    
+    return {"id": job_id, **job_dict, "created_at": now.isoformat()}
+
+@app.get("/api/daily-jobs")
+async def get_daily_jobs(session_id: Optional[str] = Cookie(default=None)):
+    """Get all daily jobs for user."""
+    uid = require_user(session_id)
+    query = {"job_type": "daily"}
+    if uid != ADMIN_ID:
+        query["owner_id"] = uid
+    
+    jobs = []
+    async for doc in db.jobs.find(query):
+        job_id = str(doc["_id"])
+        sched_job = scheduler.get_job(job_id)
+        next_run = sched_job.next_run_time.isoformat() if sched_job and sched_job.next_run_time else None
+        created_at = doc.get("created_at")
+        if hasattr(created_at, "isoformat"):
+            created_at = created_at.isoformat()
+        jobs.append({
+            "id": job_id,
+            "name": doc.get("name", ""),
+            "url": doc.get("url", ""),
+            "hour": doc.get("hour"),
+            "timezone": doc.get("timezone", "UTC"),
+            "created_at": created_at,
+            "next_run": next_run,
+            "owner_id": doc.get("owner_id"),
+        })
+    return jobs
+
+@app.patch("/api/daily-jobs/{job_id}")
+async def update_daily_job(job_id: str, job_update: DailyJobUpdate, session_id: Optional[str] = Cookie(default=None)):
+    """Update a daily job."""
+    uid = require_user(session_id)
+    try:
+        obj_id = ObjectId(job_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid job ID format")
+    
+    existing = await db.jobs.find_one({"_id": obj_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if uid != ADMIN_ID and existing.get("owner_id") != uid:
+        raise HTTPException(status_code=403, detail="Access denied")
+    if existing.get("job_type") != "daily":
+        raise HTTPException(status_code=400, detail="This is not a daily job")
+    
+    update_data = job_update.model_dump(exclude_unset=True)
+    
+    # Validate timezone if provided
+    if "timezone" in update_data and update_data["timezone"] not in SUPPORTED_TIMEZONES:
+        raise HTTPException(status_code=400, detail=f"Unsupported timezone. Use: {list(SUPPORTED_TIMEZONES.keys())}")
+    
+    if update_data:
+        await db.jobs.update_one({"_id": obj_id}, {"$set": update_data})
+    
+    new_url = update_data.get("url", existing.get("url", ""))
+    new_hour = update_data.get("hour", existing.get("hour"))
+    new_tz = update_data.get("timezone", existing.get("timezone", "UTC"))
+    
+    if new_url and new_hour is not None:
+        _schedule_daily_job_wrapper(job_id, new_url, new_hour, new_tz)
+    
+    return {"status": "updated"}
+
+@app.delete("/api/daily-jobs/{job_id}")
+async def delete_daily_job(job_id: str, session_id: Optional[str] = Cookie(default=None)):
+    """Delete a daily job."""
+    uid = require_user(session_id)
+    try:
+        obj_id = ObjectId(job_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid job ID format")
+    
+    doc = await db.jobs.find_one({"_id": obj_id})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if uid != ADMIN_ID and doc.get("owner_id") != uid:
+        raise HTTPException(status_code=403, detail="Access denied")
+    if doc.get("job_type") != "daily":
+        raise HTTPException(status_code=400, detail="This is not a daily job")
+    
+    await db.jobs.delete_one({"_id": obj_id})
+    await db.logs.delete_many({"job_id": job_id})
+    _unschedule_daily_job_wrapper(job_id)
+    
+    return {"status": "deleted"}
+
+@app.get("/api/available-hours")
+async def get_available_hours(session_id: Optional[str] = Cookie(default=None)):
+    """Get list of available hours (0-23) for daily jobs."""
+    require_user(session_id)
+    return {"hours": AVAILABLE_HOURS}
+
+@app.get("/api/available-timezones")
+async def get_available_timezones(session_id: Optional[str] = Cookie(default=None)):
+    """Get list of supported timezones."""
+    require_user(session_id)
+    return {"timezones": list(SUPPORTED_TIMEZONES.keys())}
 
 # Logs ────────────────────────────────────────────────────────────────────────
 
