@@ -91,8 +91,13 @@ async def lifespan(app: FastAPI):
 
     # Restore persisted jobs into scheduler
     async for job in db.jobs.find():
-        _schedule_job(str(job["_id"]), job["url"], job["interval_seconds"])
-
+        job_id = str(job["_id"])
+        url = job.get("url")
+        interval = job.get("interval_seconds")
+        if url and interval:
+            _schedule_job(job_id, url, interval)
+        else:
+            print(f"[APP] WARNING: Skipping job {job_id} due to missing fields (url={url}, interval={interval})")
     scheduler.start()
     print(f"[APP] Scheduler started with {len(scheduler.get_jobs())} job(s).")
 
@@ -171,8 +176,8 @@ async def get_jobs():
         jobs.append({
             "id": job_id,
             "name": doc.get("name", ""),
-            "url": doc["url"],
-            "interval_seconds": doc["interval_seconds"],
+            "url": doc.get("url", ""),
+            "interval_seconds": doc.get("interval_seconds", 0),
             "created_at": doc.get("created_at", "").isoformat() if doc.get("created_at") else None,
             "next_run": next_run,
         })
@@ -215,9 +220,10 @@ async def update_job(job_id: str, job_update: JobUpdate):
     if update_data:
         await db.jobs.update_one({"_id": ObjectId(job_id)}, {"$set": update_data})
 
-    new_url = update_data.get("url", existing["url"])
-    new_interval = update_data.get("interval_seconds", existing["interval_seconds"])
-    _schedule_job(job_id, new_url, new_interval)
+    new_url = update_data.get("url", existing.get("url", ""))
+    new_interval = update_data.get("interval_seconds", existing.get("interval_seconds", 0))
+    if new_url and new_interval > 0:
+        _schedule_job(job_id, new_url, new_interval)
     return {"status": "updated"}
 
 
