@@ -1,186 +1,209 @@
+"""
+app.py — CronPulse FastAPI Application
+Manages dynamic cron jobs via MongoDB + APScheduler.
+Legacy URL monitoring is handled separately in main.py.
+"""
+
 import asyncio
-import aiohttp
-import socket
 import os
-from fastapi import FastAPI, Request, HTTPException, Form
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
 from contextlib import asynccontextmanager
-from motor.motor_asyncio import AsyncIOMotorClient
+from datetime import datetime, timezone
+from typing import Optional
+
+import aiohttp
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-from pydantic_settings import BaseSettings
-from pydantic import BaseModel, Field
 from bson import ObjectId
-from typing import List, Optional
-from datetime import datetime
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from motor.motor_asyncio import AsyncIOMotorClient
+from pydantic import BaseModel, Field, HttpUrl
+from pydantic_settings import BaseSettings
+
+
+# ─── Settings ─────────────────────────────────────────────────────────────────
 
 class Settings(BaseSettings):
     mongodb_uri: str = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
     database_name: str = "cron_jobs_db"
+    port: int = int(os.getenv("PORT", "8080"))
+
+    class Config:
+        env_file = ".env"
+        extra = "ignore"
+
 
 settings = Settings()
 templates = Jinja2Templates(directory="templates")
 
-# Existing URLS for non-regression
-URLS = [
-    "https://unpleasant-tapir-alexpinaorg-ee539153.koyeb.app/",
-    "https://bot-pl0g.onrender.com/",
-    "https://brilliant-celestyn-mustafaorgka-608d1ba4.koyeb.app/",
-    "https://fsb-latest-yymc.onrender.com/",
-    "https://gemini-5re4.onrender.com/",
-    "https://late-alameda-streamppl-f38f75e1.koyeb.app/",
-    "https://main-diup.onrender.com/",
-    "https://marxist-theodosia-ironblood-b363735f.koyeb.app/",
-    "https://mltb-x2pj.onrender.com/",
-    "https://neutral-ralina-alwuds-cc44c37a.koyeb.app/",
-    "https://ssr-fuz6.onrender.com",
-    "https://unaware-joanne-eliteflixmedia-976ac949.koyeb.app/",
-    "https://worthwhile-gaynor-nternetke-5a83f931.koyeb.app/",
-    "https://cronjob-sxmj.onrender.com",
-    "https://native-darryl-jahahagwksj-902a75ed.koyeb.app/",
-    "https://prerss.onrender.com/skymovieshd/latest-updated-movies",
-    "https://gofile-spht.onrender.com",
-    "https://gofile-g1dl.onrender.com",
-    "https://regex-k9as.onrender.com",
-    "https://namechanged.onrender.com",
-    "https://telegram-stremio-v9ur.onrender.com",
-]
+# ─── Globals ──────────────────────────────────────────────────────────────────
 
-PORTS = [(url.split("//")[1].strip("/"), 8080) for url in URLS]
-INTERVAL_SECONDS = 5
-
-async def ping_http(session, url):
-    try:
-        async with session.get(url, timeout=5) as resp:
-            print(f"[HTTP] {url} - Status: {resp.status}")
-    except Exception as e:
-        print(f"[HTTP] {url} - Error: {e}")
-
-async def ping_port(host, port):
-    try:
-        reader, writer = await asyncio.open_connection(host, port)
-        print(f"[PORT] {host}:{port} is OPEN")
-        writer.close()
-        await writer.wait_closed()
-    except Exception as e:
-        print(f"[PORT] {host}:{port} is DOWN - {e}")
-
-async def monitor_all():
-    async with aiohttp.ClientSession() as session:
-        while True:
-            http_tasks = [ping_http(session, url) for url in URLS]
-            port_tasks = [ping_port(host, port) for host, port in PORTS]
-            await asyncio.gather(*http_tasks, *port_tasks)
-            await asyncio.sleep(INTERVAL_SECONDS)
-
-# New Scheduler Logic
 scheduler = AsyncIOScheduler()
-db_client = None
+db_client: Optional[AsyncIOMotorClient] = None
 db = None
 
-async def run_cron_job(url: str):
-    async with aiohttp.ClientSession() as session:
-        try:
-            async with session.get(url, timeout=10) as resp:
-                print(f"[CRON] {url} - Status: {resp.status}")
-                # Log execution to DB
-                await db.logs.insert_one({
-                    "url": url,
+
+# ─── Job runner ───────────────────────────────────────────────────────────────
+
+async def run_cron_job(job_id: str, url: str) -> None:
+    """Execute a single cron job: GET the URL, log result to DB."""
+    started_at = datetime.now(timezone.utc)
+    log_entry: dict = {
+        "job_id": job_id,
+        "url": url,
+        "timestamp": started_at,
+    }
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+                body_preview = (await resp.text())[:200]
+                log_entry.update({
                     "status": resp.status,
-                    "timestamp": datetime.utcnow()
+                    "success": 200 <= resp.status < 400,
+                    "response_preview": body_preview,
+                    "error": None,
                 })
-        except Exception as e:
-            print(f"[CRON] {url} - Error: {e}")
-            await db.logs.insert_one({
-                "url": url,
-                "status": "error",
-                "error": str(e),
-                "timestamp": datetime.utcnow()
-            })
+                print(f"[CRON] ✓ {url}  →  HTTP {resp.status}")
+    except asyncio.TimeoutError:
+        log_entry.update({"status": "timeout", "success": False, "error": "Request timed out"})
+        print(f"[CRON] ✗ {url}  →  TIMEOUT")
+    except Exception as exc:
+        log_entry.update({"status": "error", "success": False, "error": str(exc)})
+        print(f"[CRON] ✗ {url}  →  ERROR: {exc}")
+    finally:
+        if db is not None:
+            await db.logs.insert_one(log_entry)
+
+
+# ─── Lifespan (startup / shutdown) ────────────────────────────────────────────
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global db_client, db
-    # Legacy monitor
-    legacy_task = asyncio.create_task(monitor_all())
 
-    # DB & Scheduler
     db_client = AsyncIOMotorClient(settings.mongodb_uri)
     db = db_client[settings.database_name]
 
-    # Load jobs
-    cursor = db.jobs.find()
-    async for job in cursor:
-        scheduler.add_job(
-            run_cron_job,
-            IntervalTrigger(minutes=job['interval']),
-            id=str(job['_id']),
-            args=[job['url']],
-            replace_existing=True
-        )
+    # Create indexes for fast queries
+    await db.logs.create_index([("job_id", 1), ("timestamp", -1)])
+    await db.logs.create_index([("timestamp", -1)])
+
+    # Restore persisted jobs into scheduler
+    async for job in db.jobs.find():
+        _schedule_job(str(job["_id"]), job["url"], job["interval_seconds"])
 
     scheduler.start()
+    print(f"[APP] Scheduler started with {len(scheduler.get_jobs())} job(s).")
+
     yield
-    scheduler.shutdown()
+
+    scheduler.shutdown(wait=False)
     db_client.close()
-    legacy_task.cancel()
+    print("[APP] Shutdown complete.")
 
-app = FastAPI(lifespan=lifespan)
 
-# API Models
+# ─── Scheduler helpers ────────────────────────────────────────────────────────
+
+def _schedule_job(job_id: str, url: str, interval_seconds: int) -> None:
+    """Add or replace a job in APScheduler."""
+    scheduler.add_job(
+        run_cron_job,
+        IntervalTrigger(seconds=interval_seconds),
+        id=job_id,
+        args=[job_id, url],
+        replace_existing=True,
+    )
+
+
+def _unschedule_job(job_id: str) -> None:
+    try:
+        scheduler.remove_job(job_id)
+    except Exception:
+        pass
+
+
+# ─── FastAPI app ──────────────────────────────────────────────────────────────
+
+app = FastAPI(
+    title="CronPulse",
+    description="Professional cron job manager with per-job execution logs.",
+    version="2.0.0",
+    lifespan=lifespan,
+)
+
+
+# ─── Pydantic models ──────────────────────────────────────────────────────────
+
 class JobIn(BaseModel):
-    url: str
-    interval: int = Field(gt=0, description="Interval in minutes")
+    url: str = Field(..., description="Target URL to ping")
+    name: str = Field(..., min_length=1, max_length=80, description="Human-readable job name")
+    interval_seconds: int = Field(..., gt=0, description="Interval in seconds (min 1)")
+
 
 class JobUpdate(BaseModel):
     url: Optional[str] = None
-    interval: Optional[int] = Field(None, gt=0)
+    name: Optional[str] = Field(None, min_length=1, max_length=80)
+    interval_seconds: Optional[int] = Field(None, gt=0)
 
-# Routes
+
+# ─── Routes ───────────────────────────────────────────────────────────────────
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse(request, "index.html")
 
+
 @app.get("/health")
 def health_check():
-    return {"status": "ok"}
+    return {"status": "ok", "jobs": len(scheduler.get_jobs())}
+
+
+# Jobs CRUD ────────────────────────────────────────────────────────────────────
 
 @app.get("/api/jobs")
 async def get_jobs():
-    cursor = db.jobs.find()
     jobs = []
-    async for doc in cursor:
-        doc["id"] = str(doc["_id"])
-        del doc["_id"]
-        jobs.append(doc)
+    async for doc in db.jobs.find():
+        job_id = str(doc["_id"])
+        sched_job = scheduler.get_job(job_id)
+        next_run = sched_job.next_run_time.isoformat() if sched_job and sched_job.next_run_time else None
+        jobs.append({
+            "id": job_id,
+            "name": doc.get("name", ""),
+            "url": doc["url"],
+            "interval_seconds": doc["interval_seconds"],
+            "created_at": doc.get("created_at", "").isoformat() if doc.get("created_at") else None,
+            "next_run": next_run,
+        })
     return jobs
 
-@app.post("/api/jobs")
+
+@app.post("/api/jobs", status_code=201)
 async def create_job(job: JobIn):
-    job_dict = job.dict()
+    now = datetime.now(timezone.utc)
+    job_dict = {
+        "name": job.name,
+        "url": job.url,
+        "interval_seconds": job.interval_seconds,
+        "created_at": now,
+    }
     result = await db.jobs.insert_one(job_dict)
     job_id = str(result.inserted_id)
+    _schedule_job(job_id, job.url, job.interval_seconds)
+    return {"id": job_id, **job_dict, "created_at": now.isoformat()}
 
-    scheduler.add_job(
-        run_cron_job,
-        IntervalTrigger(minutes=job.interval),
-        id=job_id,
-        args=[job.url]
-    )
-    return {"id": job_id, **job_dict}
 
 @app.delete("/api/jobs/{job_id}")
 async def delete_job(job_id: str):
     result = await db.jobs.delete_one({"_id": ObjectId(job_id)})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Job not found")
-
-    try:
-        scheduler.remove_job(job_id)
-    except:
-        pass
+    # Also delete all logs for this job
+    await db.logs.delete_many({"job_id": job_id})
+    _unschedule_job(job_id)
     return {"status": "deleted"}
+
 
 @app.patch("/api/jobs/{job_id}")
 async def update_job(job_id: str, job_update: JobUpdate):
@@ -188,42 +211,71 @@ async def update_job(job_id: str, job_update: JobUpdate):
     if not existing:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    update_data = job_update.dict(exclude_unset=True)
-    await db.jobs.update_one({"_id": ObjectId(job_id)}, {"$set": update_data})
+    update_data = job_update.model_dump(exclude_unset=True)
+    if update_data:
+        await db.jobs.update_one({"_id": ObjectId(job_id)}, {"$set": update_data})
 
-    # Update scheduler
     new_url = update_data.get("url", existing["url"])
-    new_interval = update_data.get("interval", existing["interval"])
-
-    try:
-        scheduler.reschedule_job(
-            job_id,
-            trigger=IntervalTrigger(minutes=new_interval)
-        )
-        scheduler.modify_job(job_id, args=[new_url])
-    except:
-        # If job was not in scheduler for some reason, add it
-        scheduler.add_job(
-            run_cron_job,
-            IntervalTrigger(minutes=new_interval),
-            id=job_id,
-            args=[new_url]
-        )
-
+    new_interval = update_data.get("interval_seconds", existing["interval_seconds"])
+    _schedule_job(job_id, new_url, new_interval)
     return {"status": "updated"}
 
+
+# Logs ────────────────────────────────────────────────────────────────────────
+
 @app.get("/api/logs")
-async def get_logs(limit: int = 50):
-    cursor = db.logs.find().sort("timestamp", -1).limit(limit)
+async def get_all_logs(limit: int = 100):
+    """Get most recent logs across all jobs."""
     logs = []
-    async for doc in cursor:
-        doc["id"] = str(doc["_id"])
-        del doc["_id"]
-        doc["timestamp"] = doc["timestamp"].isoformat()
-        logs.append(doc)
+    async for doc in db.logs.find().sort("timestamp", -1).limit(limit):
+        logs.append(_serialize_log(doc))
     return logs
+
+
+@app.get("/api/jobs/{job_id}/logs")
+async def get_job_logs(job_id: str, limit: int = 50):
+    """Get logs for a specific job."""
+    logs = []
+    async for doc in db.logs.find({"job_id": job_id}).sort("timestamp", -1).limit(limit):
+        logs.append(_serialize_log(doc))
+    return logs
+
+
+@app.delete("/api/jobs/{job_id}/logs")
+async def clear_job_logs(job_id: str):
+    result = await db.logs.delete_many({"job_id": job_id})
+    return {"deleted": result.deleted_count}
+
+
+# Legacy URLs ─────────────────────────────────────────────────────────────────
+
+@app.get("/api/legacy-urls")
+async def get_legacy_urls():
+    """Return the list of legacy hardcoded URLs from main.py."""
+    try:
+        import main as legacy_module
+        return {"urls": legacy_module.URLS}
+    except ImportError:
+        return {"urls": [], "error": "main.py not found"}
+
+
+# ─── Helpers ──────────────────────────────────────────────────────────────────
+
+def _serialize_log(doc: dict) -> dict:
+    return {
+        "id": str(doc["_id"]),
+        "job_id": doc.get("job_id", ""),
+        "url": doc.get("url", ""),
+        "status": doc.get("status"),
+        "success": doc.get("success", False),
+        "error": doc.get("error"),
+        "response_preview": doc.get("response_preview", ""),
+        "timestamp": doc["timestamp"].isoformat() if doc.get("timestamp") else None,
+    }
+
+
+# ─── Entry point ──────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("PORT", 8080))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run("app:app", host="0.0.0.0", port=settings.port, reload=False)

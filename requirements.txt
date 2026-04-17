@@ -1,13 +1,10 @@
 aiohttp
 fastapi
-uvicorn
-Flask
-gunicorn
+uvicorn[standard]
 motor
 apscheduler
 dnspython
 jinja2
 python-multipart
 pydantic-settings
-httpx
-pytest
+pydantic>=2.0
