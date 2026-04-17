@@ -83,8 +83,22 @@ async def check_ssl(hostname: str) -> dict:
         cert = await loop.run_in_executor(None, _get_cert)
         expire_str = cert.get("notAfter", "")
         expire_dt = datetime.strptime(expire_str, "%b %d %H:%M:%S %Y %Z").replace(tzinfo=timezone.utc)
-        days_left = (expire_dt - datetime.now(timezone.utc)).days
-        return {"valid": True, "expires": expire_dt.isoformat(), "days_left": days_left, "error": None}
+
+        diff = expire_dt - datetime.now(timezone.utc)
+        days_left = diff.days
+        hours_left = diff.seconds // 3600
+        minutes_left = (diff.seconds % 3600) // 60
+        seconds_left = diff.seconds % 60
+
+        return {
+            "valid": True,
+            "expires": expire_dt.isoformat(),
+            "days_left": days_left,
+            "hours_left": hours_left,
+            "minutes_left": minutes_left,
+            "seconds_left": seconds_left,
+            "error": None
+        }
     except ssl.SSLCertVerificationError as e:
         return {"valid": False, "expires": None, "days_left": None, "error": f"SSL verification failed: {e}"}
     except Exception as e:
@@ -101,33 +115,6 @@ async def lifespan(app: FastAPI):
 
     await db.logs.create_index([("job_id", 1), ("timestamp", -1)])
     await db.logs.create_index([("timestamp", -1)])
-
-    legacy_urls = [
-        "https://unpleasant-tapir-alexpinaorg-ee539153.koyeb.app/", "https://bot-pl0g.onrender.com/",
-        "https://brilliant-celestyn-mustafaorgka-608d1ba4.koyeb.app/", "https://fsb-latest-yymc.onrender.com/",
-        "https://gemini-5re4.onrender.com/", "https://late-alameda-streamppl-f38f75e1.koyeb.app/",
-        "https://main-diup.onrender.com/", "https://marxist-theodosia-ironblood-b363735f.koyeb.app/",
-        "https://mltb-x2pj.onrender.com/", "https://neutral-ralina-alwuds-cc44c37a.koyeb.app/",
-        "https://ssr-fuz6.onrender.com", "https://unaware-joanne-eliteflixmedia-976ac949.koyeb.app/",
-        "https://worthwhile-gaynor-nternetke-5a83f931.koyeb.app/", "https://cronjob-sxmj.onrender.com",
-        "https://native-darryl-jahahagwksj-902a75ed.koyeb.app/", "https://prerss.onrender.com/skymovieshd/latest-updated-movies",
-        "https://gofile-spht.onrender.com", "https://gofile-g1dl.onrender.com", "https://regex-k9as.onrender.com",
-        "https://namechanged.onrender.com", "https://telegram-stremio-v9ur.onrender.com"
-    ]
-
-    print(f"[APP] Checking migration for {len(legacy_urls)} legacy URLs...")
-    for url in legacy_urls:
-        exists = await db.jobs.find_one({"url": url})
-        if not exists:
-            await db.jobs.insert_one({
-                "name": f"Legacy Sync: {url[:30]}...",
-                "url": url,
-                "interval_seconds": 300,
-                "created_at": datetime.now(timezone.utc),
-                "is_legacy": True,
-                "owner_id": ADMIN_ID,
-            })
-            print(f"[APP] Migrated legacy URL: {url}")
 
     async for job in db.jobs.find():
         job_id = str(job["_id"])
@@ -207,9 +194,10 @@ async def logout(response: Response):
     return {"ok": True}
 
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request, session_id: Optional[str] = Cookie(default=None)):
+async def index(request: Request, response: Response, session_id: Optional[str] = Cookie(default=None)):
     if not get_current_user(session_id):
         return RedirectResponse("/login")
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     return templates.TemplateResponse(request, "index.html")
 
 @app.get("/health")
