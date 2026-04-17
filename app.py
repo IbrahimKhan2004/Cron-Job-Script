@@ -131,10 +131,11 @@ async def lifespan(app: FastAPI):
         minute = job.get("minute")
         second = job.get("second")
         timezone = job.get("timezone")
+        day_of_week = job.get("day_of_week")
         
         # Schedule based on what fields are present
         if url:
-            _schedule_job_unified(job_id, url, interval_seconds, hour, minute, second, timezone)
+            _schedule_job_unified(job_id, url, interval_seconds, hour, minute, second, timezone, day_of_week)
         else:
             print(f"[APP] WARNING: Skipping job {job_id} due to missing URL")
 
@@ -153,7 +154,7 @@ def _schedule_job(job_id: str, url: str, interval_seconds: int) -> None:
 
 def _schedule_job_unified(job_id: str, url: str, interval_seconds: Optional[int], 
                           hour: Optional[int], minute: Optional[int], second: Optional[int], 
-                          timezone: Optional[str]) -> None:
+                          timezone: Optional[str], day_of_week: Optional[str] = None) -> None:
     """Schedule job as either interval-based or time-based, based on what's provided."""
     if interval_seconds and interval_seconds > 0:
         # Interval-based: use existing logic
@@ -163,7 +164,8 @@ def _schedule_job_unified(job_id: str, url: str, interval_seconds: Optional[int]
         tz = pytz.timezone(SUPPORTED_TIMEZONES[timezone])
         m = minute if minute is not None else 0
         s = second if second is not None else 0
-        trigger = CronTrigger(hour=hour, minute=m, second=s, timezone=tz)
+        trigger = CronTrigger(hour=hour, minute=m, second=s, timezone=tz,
+                              day_of_week=day_of_week if day_of_week else None)
         scheduler.add_job(run_cron_job, trigger, id=job_id, args=[job_id, url], replace_existing=True)
     else:
         print(f"[APP] WARNING: Job {job_id} has invalid schedule config")
@@ -201,6 +203,8 @@ class JobIn(BaseModel):
     minute: Optional[int] = Field(None, ge=0, le=59, description="0-59")
     second: Optional[int] = Field(None, ge=0, le=59, description="0-59")
     timezone: Optional[str] = Field(None, description="'UTC' or 'IST' for time-based jobs")
+    # Optional day-of-week filter (e.g. "mon,wed,fri" or None = every day)
+    day_of_week: Optional[str] = Field(None, description="Comma-separated APScheduler day names, e.g. 'mon,wed,fri'. None = every day.")
 
 class JobUpdate(BaseModel):
     url: Optional[str] = None
@@ -210,6 +214,7 @@ class JobUpdate(BaseModel):
     minute: Optional[int] = Field(None, ge=0, le=59)
     second: Optional[int] = Field(None, ge=0, le=59)
     timezone: Optional[str] = None
+    day_of_week: Optional[str] = None
 
 class LoginIn(BaseModel):
     user_id: str
@@ -278,6 +283,11 @@ async def get_jobs(session_id: Optional[str] = Cookie(default=None)):
             "next_run": next_run,
             "owner_id": doc.get("owner_id", ADMIN_ID),
             "is_legacy": doc.get("is_legacy", False),
+            "hour": doc.get("hour"),
+            "minute": doc.get("minute"),
+            "second": doc.get("second"),
+            "timezone": doc.get("timezone"),
+            "day_of_week": doc.get("day_of_week"),
         })
     return jobs
 
@@ -318,12 +328,14 @@ async def create_job(job: JobIn, session_id: Optional[str] = Cookie(default=None
         job_dict["minute"] = job.minute if job.minute is not None else 0
         job_dict["second"] = job.second if job.second is not None else 0
         job_dict["timezone"] = job.timezone
+        if job.day_of_week:
+            job_dict["day_of_week"] = job.day_of_week
     
     result = await db.jobs.insert_one(job_dict)
     job_id = str(result.inserted_id)
     
     # Schedule it
-    _schedule_job_unified(job_id, job.url, job.interval_seconds, job.hour, job.minute, job.second, job.timezone)
+    _schedule_job_unified(job_id, job.url, job.interval_seconds, job.hour, job.minute, job.second, job.timezone, job.day_of_week)
     
     return {"id": job_id, **job_dict, "created_at": now.isoformat()}
 
@@ -380,10 +392,11 @@ async def update_job(job_id: str, job_update: JobUpdate, session_id: Optional[st
     final_second = update_data.get("second", existing.get("second"))
     final_tz = update_data.get("timezone", existing.get("timezone"))
     final_url = update_data.get("url", existing.get("url", ""))
+    final_dow = update_data.get("day_of_week", existing.get("day_of_week"))
     
     # Reschedule if URL or schedule changed
     if final_url:
-        _schedule_job_unified(job_id, final_url, final_interval, final_hour, final_minute, final_second, final_tz)
+        _schedule_job_unified(job_id, final_url, final_interval, final_hour, final_minute, final_second, final_tz, final_dow)
     
     return {"status": "updated"}
 
