@@ -189,12 +189,17 @@ async def get_jobs():
         job_id = str(doc["_id"])
         sched_job = scheduler.get_job(job_id)
         next_run = sched_job.next_run_time.isoformat() if sched_job and sched_job.next_run_time else None
+
+        created_at = doc.get("created_at")
+        if hasattr(created_at, "isoformat"):
+            created_at = created_at.isoformat()
+
         jobs.append({
             "id": job_id,
             "name": doc.get("name", ""),
             "url": doc.get("url", ""),
             "interval_seconds": doc.get("interval_seconds", 0),
-            "created_at": doc.get("created_at").isoformat() if doc.get("created_at") else None,
+            "created_at": created_at,
             "next_run": next_run,
         })
     return jobs
@@ -275,6 +280,10 @@ async def clear_job_logs(job_id: str):
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def _serialize_log(doc: dict) -> dict:
+    timestamp = doc.get("timestamp")
+    if hasattr(timestamp, "isoformat"):
+        timestamp = timestamp.isoformat()
+
     return {
         "id": str(doc["_id"]),
         "job_id": doc.get("job_id", ""),
@@ -283,7 +292,7 @@ def _serialize_log(doc: dict) -> dict:
         "success": doc.get("success", False),
         "error": doc.get("error"),
         "response_preview": doc.get("response_preview", ""),
-        "timestamp": doc.get("timestamp").isoformat() if doc.get("timestamp") else None,
+        "timestamp": timestamp,
     }
 
 if __name__ == "__main__":
