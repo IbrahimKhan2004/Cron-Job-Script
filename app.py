@@ -22,6 +22,8 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
+from status import create_status_router
+
 # ─── Settings ─────────────────────────────────────────────────────────────────
 
 class Settings(BaseSettings):
@@ -350,6 +352,11 @@ def _serialize_log(doc: dict) -> dict:
         "response_preview": doc.get("response_preview", ""),
         "timestamp": timestamp,
     }
+
+def _get_db():
+    return db
+
+app.include_router(create_status_router(_get_db, require_user, ADMIN_ID, templates, _serialize_log))
 
 if __name__ == "__main__":
     import uvicorn

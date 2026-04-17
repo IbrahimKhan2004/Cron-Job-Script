@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CronPulse — Status</title>
+  <style>
+    :root {
+      --bg:#0b0d12; --surface:#111520; --surface2:#181d2a; --border:#1e2435;
+      --text:#e2e8f0; --text2:#8b9ab5; --green:#22c55e; --red:#ef4444; --yellow:#f59e0b; --blue:#3b82f6;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter, Arial, sans-serif; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 12px; }
+    .sticky {
+      position: sticky; top: 0; z-index: 10; background: rgba(11,13,18,.96);
+      border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 12px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .head-left { min-width: 0; display: flex; align-items: center; gap: 10px; }
+    .head-left img { width: 26px; height: 26px; border-radius: 6px; }
+    .title { font-weight: 700; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sub { font-size: .78rem; color: var(--text2); word-break: break-all; }
+    .badge { padding: 4px 10px; border-radius: 999px; font-size: .75rem; font-weight: 700; border: 1px solid transparent; }
+    .ok { color: var(--green); background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.2); }
+    .bad { color: var(--red); background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.2); }
+    .warn { color: var(--yellow); background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.2); }
+    .neutral { color: var(--text2); background: rgba(139,154,181,.08); border-color: rgba(139,154,181,.2); }
+    .btn, select {
+      border: 1px solid var(--border); background: var(--surface); color: var(--text);
+      border-radius: 8px; padding: 8px 10px; font-size: .84rem;
+    }
+    .btn { cursor: pointer; }
+    .bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .cards { display: grid; gap: 10px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 12px; }
+    .card { border: 1px solid var(--border); background: var(--surface); border-radius: 12px; padding: 12px; }
+    .k { color: var(--text2); font-size: .75rem; text-transform: uppercase; }
+    .v { font-size: 1.2rem; font-weight: 700; margin-top: 6px; }
+    .error-box { border: 1px solid rgba(239,68,68,.25); background: rgba(239,68,68,.09); color: #fecaca; border-radius: 12px; padding: 12px; margin-bottom: 12px; }
+    .table-wrap { border: 1px solid var(--border); border-radius: 12px; overflow: auto; background: var(--surface); }
+    table { width: 100%; border-collapse: collapse; min-width: 700px; }
+    th, td { padding: 10px; border-bottom: 1px solid var(--border); text-align: left; font-size: .85rem; }
+    th { color: var(--text2); font-size: .74rem; text-transform: uppercase; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    .top-controls { display: flex; justify-content: space-between; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+    .filter { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .filter button { border: 0; padding: 8px 10px; background: var(--surface); color: var(--text2); cursor: pointer; }
+    .filter button.active { background: var(--surface2); color: var(--text); }
+    @media (max-width: 900px) {
+      .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 640px) {
+      .cards { grid-template-columns: 1fr; }
+      .sticky { flex-direction: column; align-items: stretch; }
+      .bar { justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="sticky">
+    <div class="head-left">
+      <img id="siteIcon" alt="icon" src="" />
+      <div style="min-width:0">
+        <div class="title" id="jobName">{{ job_name }}</div>
+        <div class="sub" id="jobUrl">{{ job_url }}</div>
+      </div>
+      <span class="badge neutral" id="jobStatusBadge">Never</span>
+    </div>
+    <div class="bar">
+      <button class="btn" id="copyBtn">Copy URL</button>
+      <a class="btn" href="/">Back</a>
+      <label for="refreshEvery" style="font-size:.8rem;color:var(--text2)">Auto refresh</label>
+      <select id="refreshEvery">
+        <option value="0">Off</option>
+        <option value="1">1 sec</option>
+        <option value="2">2 sec</option>
+        <option value="3" selected>3 sec</option>
+        <option value="4">4 sec</option>
+        <option value="6">6 sec</option>
+        <option value="7">7 sec</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card"><div class="k">Last Execution</div><div class="v" id="lastExecution">—</div></div>
+    <div class="card"><div class="k">Since Last Run</div><div class="v" id="sinceLast">—</div></div>
+    <div class="card"><div class="k">Total Runs</div><div class="v" id="totalRuns">0</div></div>
+    <div class="card"><div class="k">Failed Runs</div><div class="v" id="failedRuns">0</div></div>
+    <div class="card"><div class="k">Success Rate</div><div class="v" id="successRate">0%</div></div>
+    <div class="card"><div class="k">Latest Entries</div><div class="v">20</div></div>
+  </div>
+
+  <div class="error-box" id="lastErrorBox" style="display:none"></div>
+
+  <div class="top-controls">
+    <div class="filter">
+      <button id="filterAll" class="active">All logs</button>
+      <button id="filterFailed">Failed only</button>
+    </div>
+    <div style="font-size:.78rem;color:var(--text2)">Newest first, fixed 20-row limit</div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+      <tr><th>Time</th><th>Status</th><th>URL</th><th>Error</th></tr>
+      </thead>
+      <tbody id="logsBody"><tr><td colspan="4">Loading...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  const jobId = {{ job_id|tojson }};
+  let failedOnly = false;
+  let refreshTimer = null;
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  function setStatusBadge(status) {
+    const el = document.getElementById('jobStatusBadge');
+    el.className = 'badge neutral';
+    if (status === 'success') { el.textContent = 'Success'; el.className = 'badge ok'; return; }
+    if (status === 'failed') { el.textContent = 'Failed'; el.className = 'badge bad'; return; }
+    if (status === 'warning') { el.textContent = 'Warning'; el.className = 'badge warn'; return; }
+    el.textContent = 'Never';
+  }
+
+  async function fetchStatus() {
+    const res = await fetch(`/api/jobs/${jobId}/status`);
+    if (!res.ok) throw new Error('status fetch failed');
+    const d = await res.json();
+    document.getElementById('jobName').textContent = d.job.name || 'Untitled';
+    document.getElementById('jobUrl').textContent = d.job.url || '';
+    document.getElementById('lastExecution').textContent = d.last_execution_time ? new Date(d.last_execution_time).toLocaleString() : '—';
+    document.getElementById('sinceLast').textContent = d.time_since_last_run || '—';
+    document.getElementById('totalRuns').textContent = d.total_runs;
+    document.getElementById('failedRuns').textContent = d.failed_runs;
+    document.getElementById('successRate').textContent = `${d.success_rate}%`;
+    const ebox = document.getElementById('lastErrorBox');
+    if (d.last_error_message) {
+      ebox.style.display = 'block';
+      ebox.textContent = `Last error: ${d.last_error_message}`;
+    } else {
+      ebox.style.display = 'none';
+      ebox.textContent = '';
+    }
+    setStatusBadge(d.last_run_status);
+    try {
+      const host = new URL(d.job.url).hostname;
+      document.getElementById('siteIcon').src = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`;
+    } catch {}
+  }
+
+  async function fetchLogs() {
+    const res = await fetch(`/api/jobs/${jobId}/status/logs?failed_only=${failedOnly ? 'true' : 'false'}`);
+    if (!res.ok) throw new Error('log fetch failed');
+    const d = await res.json();
+    const body = document.getElementById('logsBody');
+    if (!d.logs.length) {
+      body.innerHTML = '<tr><td colspan="4">No logs found.</td></tr>';
+      return;
+    }
+    body.innerHTML = d.logs.map(l => `
+      <tr>
+        <td class="mono">${new Date(l.timestamp).toLocaleString()}</td>
+        <td><span class="badge ${l.success ? 'ok' : 'bad'}">${escHtml(String(l.status || 'ERR'))}</span></td>
+        <td class="mono">${escHtml(l.url)}</td>
+        <td style="color:${l.error ? '#fca5a5' : '#8b9ab5'}">${l.error ? escHtml(l.error) : '—'}</td>
+      </tr>
+    `).join('');
+  }
+
+  async function refreshAll() {
+    await Promise.all([fetchStatus(), fetchLogs()]);
+  }
+
+  function applyRefreshInterval() {
+    const sec = Number(document.getElementById('refreshEvery').value || '0');
+    if (refreshTimer) {
+      clearInterval(refreshTimer);
+      refreshTimer = null;
+    }
+    if (sec > 0) {
+      refreshTimer = setInterval(() => { refreshAll().catch(() => {}); }, sec * 1000);
+    }
+  }
+
+  document.getElementById('refreshEvery').addEventListener('change', applyRefreshInterval);
+  document.getElementById('filterAll').addEventListener('click', () => {
+    failedOnly = false;
+    document.getElementById('filterAll').classList.add('active');
+    document.getElementById('filterFailed').classList.remove('active');
+    fetchLogs().catch(() => {});
+  });
+  document.getElementById('filterFailed').addEventListener('click', () => {
+    failedOnly = true;
+    document.getElementById('filterFailed').classList.add('active');
+    document.getElementById('filterAll').classList.remove('active');
+    fetchLogs().catch(() => {});
+  });
+  document.getElementById('copyBtn').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      document.getElementById('copyBtn').textContent = 'Copied';
+      setTimeout(() => document.getElementById('copyBtn').textContent = 'Copy URL', 1200);
+    } catch {}
+  });
+
+  refreshAll().catch(() => {
+    document.getElementById('logsBody').innerHTML = '<tr><td colspan="4">Failed to load status.</td></tr>';
+  });
+  applyRefreshInterval();
+</script>
+</body>
+</html>
