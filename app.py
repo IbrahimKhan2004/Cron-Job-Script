@@ -460,6 +460,10 @@ async def get_available_timezones(session_id: Optional[str] = Cookie(default=Non
 def _serialize_log(doc: dict) -> dict:
     timestamp = doc.get("timestamp")
     if hasattr(timestamp, "isoformat"):
+        # MongoDB returns naive datetimes (no tzinfo) even for UTC-stored values.
+        # Attaching UTC explicitly ensures JS new Date() parses as UTC, not local time.
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=timezone.utc)
         timestamp = timestamp.isoformat()
     return {
         "id": str(doc["_id"]),
