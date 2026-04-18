@@ -199,44 +199,76 @@
     .drum-picker-wrap { display: flex; flex-direction: column; gap: 4px; }
     .drum-picker-wrap label { font-size: .68rem; font-weight: 600; color: var(--text2); }
 
-    /* Changed: Custom picker UI — no system popup, scrollable in-page list */
-    .drum-picker {
-      position: relative; height: 38px; background: var(--bg);
-      border: 1px solid var(--border2); border-radius: 8px;
-      overflow: visible; cursor: pointer;
+    /* Changed: iOS-style wheel picker for Minute/Second — scroll-snap, faded top/bottom, center clear */
+    .drum-picker-wrap { position: relative; }
+
+    .ios-wheel {
+      position: relative;
+      height: 120px; /* Changed: 3 visible rows at 40px each — center = selected */
+      border: 1px solid var(--border2); border-radius: 10px;
+      overflow: hidden; background: var(--bg);
       transition: border-color var(--tx), box-shadow var(--tx);
-      display: flex; align-items: center;
     }
-    .drum-picker:focus-within, .drum-picker.focused {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(79,142,247,0.1);
+    .ios-wheel:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,142,247,0.1); }
+
+    /* Changed: Scrollable list inside wheel */
+    .ios-wheel-list {
+      height: 100%; overflow-y: scroll;
+      scroll-snap-type: y mandatory; /* Changed: snaps each item to center on scroll stop */
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none; /* Changed: hide scrollbar — clean iOS look */
+    }
+    .ios-wheel-list::-webkit-scrollbar { display: none; }
+
+    /* Changed: Padding top/bottom = 2 rows so first/last item can center */
+    .ios-wheel-list::before,
+    .ios-wheel-list::after {
+      content: ''; display: block; height: 40px; /* Changed: 40px = 1 row height, allows first/last to center */
     }
 
-    .drum-display {
-      flex: 1; padding: 0 11px;
-      font-family: var(--font-mono); font-size: .88rem; font-weight: 600;
-      color: var(--text); user-select: none;
-      display: flex; align-items: center; gap: 7px; height: 100%;
+    .ios-wheel-item {
+      height: 40px; /* Changed: fixed row height matches snap unit */
+      display: flex; align-items: center; justify-content: center;
+      scroll-snap-align: center; /* Changed: each item snaps to center */
+      font-family: var(--font-mono); font-size: 1rem; font-weight: 600;
+      color: var(--text2); cursor: pointer; user-select: none;
+      transition: color 0.1s;
     }
-    .drum-label {
-      font-size: .6rem; color: var(--text3); font-weight: 400;
-      font-family: var(--font-sans); text-transform: uppercase; letter-spacing: 0.04em;
+    .ios-wheel-item.selected {
+      color: var(--text); font-size: 1.1rem; /* Changed: center item bigger + bright */
     }
 
-    /* Changed: +/- stepper buttons — replaces native scroll/popup interaction */
-    .drum-controls {
-      display: flex; flex-direction: column; height: 100%;
-      border-left: 1px solid var(--border2); flex-shrink: 0;
+    /* Changed: Gradient fade overlay — top fades out, bottom fades out, center clear */
+    .ios-wheel::after {
+      content: '';
+      position: absolute; inset: 0; pointer-events: none;
+      background: linear-gradient(
+        to bottom,
+        var(--bg) 0%,
+        rgba(6,7,9,0.7) 18%,
+        transparent 38%,       /* Changed: center band (40px) stays fully clear */
+        transparent 62%,
+        rgba(6,7,9,0.7) 82%,
+        var(--bg) 100%
+      ); /* Changed: fade creates depth illusion — center row is always crisp */
     }
-    .drum-btn {
-      background: none; border: none; color: var(--text3); cursor: pointer;
-      padding: 0 9px; flex: 1; display: flex; align-items: center; justify-content: center;
-      transition: background var(--tx), color var(--tx);
-      font-size: 8px;
+
+    /* Changed: Center line indicators — iOS selector lines */
+    .ios-wheel::before {
+      content: '';
+      position: absolute; left: 0; right: 0;
+      top: calc(50% - 20px); height: 40px;
+      border-top: 1px solid var(--border2);
+      border-bottom: 1px solid var(--border2);
+      pointer-events: none; z-index: 2;
     }
-    .drum-btn:hover { background: var(--surface2); color: var(--text); }
-    .drum-btn:first-child { border-bottom: 1px solid var(--border2); border-radius: 0 8px 0 0; }
-    .drum-btn:last-child { border-radius: 0 0 8px 0; }
+
+    /* Changed: Label below wheel */
+    .ios-wheel-label {
+      text-align: center; font-size: .6rem; color: var(--text3);
+      text-transform: uppercase; letter-spacing: 0.06em; margin-top: 5px;
+      font-family: var(--font-sans); font-weight: 600;
+    }
 
     /* Changed: Floating dropdown list — opens below picker, stays in viewport */
     .drum-dropdown {
@@ -529,9 +561,10 @@
     .dropdown { position: relative; display: inline-block; }
     .dropdown-content {
       display: none; position: absolute; right: 0; top: calc(100% + 4px);
-      background: var(--surface2); min-width: 152px;
-      box-shadow: var(--shadow-lg); z-index: 50;
+      background: var(--surface2); min-width: 160px;
+      box-shadow: var(--shadow-lg); z-index: 200;
       border: 1px solid var(--border2); border-radius: 10px; overflow: hidden;
+      isolation: isolate; /* Changed: isolation:isolate prevents stacking context bleed that caused Actions cell bg mismatch */
     }
     .dropdown-content a {
       color: var(--text2); padding: 8px 13px; text-decoration: none;
@@ -631,7 +664,7 @@
           <div class="interval-row">
             <input type="number" id="jobInterval" value="5" min="1" />
 <!-- Changed: Unit selector replaced with drum picker — no Chrome popup; logic reads hidden input jobIntervalUnit same as before -->
-            <div class="unit-drum-picker" id="jobUnitPicker" onclick="toggleUnitDrum('jobUnitPicker')">
+            <div class="unit-drum-picker" id="jobUnitPicker" onclick="toggleUnitDrum('jobUnitPicker', event)">
               <div class="unit-drum-display">
                 <span id="jobUnitDisplay">Minutes</span>
                 <span class="unit-drum-arrow">▾</span>
@@ -654,36 +687,23 @@
 
         <!-- Changed: Minute (0-59) now uses drum picker — NO browser popup, fully in-page -->
         <div class="time-pickers-row">
+          <!-- Changed: iOS-style wheel replaces drum picker for Minute — scroll to select, faded top/bottom -->
           <div class="drum-picker-wrap">
             <label>Minute (0–59)</label>
-            <div class="drum-picker" id="jobMinutePicker" onclick="toggleDrum('jobMinutePicker')">
-              <div class="drum-display">
-                <span id="jobMinuteDisplay">00</span>
-                <span class="drum-label">min</span>
-              </div>
-              <div class="drum-controls">
-                <button class="drum-btn" onclick="event.stopPropagation(); stepDrum('jobMinutePicker',1,59)">▲</button>
-                <button class="drum-btn" onclick="event.stopPropagation(); stepDrum('jobMinutePicker',-1,59)">▼</button>
-              </div>
+            <div class="ios-wheel" id="jobMinuteWheel">
+              <div class="ios-wheel-list" id="jobMinuteList"></div>
             </div>
-            <!-- Changed: Hidden input preserves original value contract — existing createJob() reads this -->
-            <input type="hidden" id="jobMinute" value="0" />
+            <div class="ios-wheel-label">minute</div>
+            <input type="hidden" id="jobMinute" value="0" /> <!-- Changed: hidden input keeps createJob() reading jobMinute exactly as before -->
           </div>
+          <!-- Changed: iOS-style wheel replaces drum picker for Second — scroll to select, faded top/bottom -->
           <div class="drum-picker-wrap">
             <label>Second (0–59)</label>
-            <!-- Changed: Second (0-59) drum picker — NO browser popup, fully in-page -->
-            <div class="drum-picker" id="jobSecondPicker" onclick="toggleDrum('jobSecondPicker')">
-              <div class="drum-display">
-                <span id="jobSecondDisplay">00</span>
-                <span class="drum-label">sec</span>
-              </div>
-              <div class="drum-controls">
-                <button class="drum-btn" onclick="event.stopPropagation(); stepDrum('jobSecondPicker',1,59)">▲</button>
-                <button class="drum-btn" onclick="event.stopPropagation(); stepDrum('jobSecondPicker',-1,59)">▼</button>
-              </div>
+            <div class="ios-wheel" id="jobSecondWheel">
+              <div class="ios-wheel-list" id="jobSecondList"></div>
             </div>
-            <!-- Changed: Hidden input preserves original value contract — existing createJob() reads this -->
-            <input type="hidden" id="jobSecond" value="0" />
+            <div class="ios-wheel-label">second</div>
+            <input type="hidden" id="jobSecond" value="0" /> <!-- Changed: hidden input keeps createJob() reading jobSecond exactly as before -->
           </div>
         </div>
 
@@ -808,7 +828,7 @@
         <div class="interval-row">
           <input type="number" id="editInterval" min="1" />
 <!-- Changed: Edit unit selector replaced with drum picker — no Chrome popup; saveEdit() reads hidden input editIntervalUnit same as before -->
-          <div class="unit-drum-picker" id="editUnitPicker" onclick="toggleUnitDrum('editUnitPicker')">
+          <div class="unit-drum-picker" id="editUnitPicker" onclick="toggleUnitDrum('editUnitPicker', event)">
             <div class="unit-drum-display">
               <span id="editUnitDisplay">Minutes</span>
               <span class="unit-drum-arrow">▾</span>
@@ -829,36 +849,23 @@
       </div>
       <!-- Changed: Edit modal Minute drum picker — no browser popup -->
       <div class="time-pickers-row">
+        <!-- Changed: iOS wheel for editMinute — same as create form -->
         <div class="drum-picker-wrap">
           <label>Minute (0–59)</label>
-          <div class="drum-picker" id="editMinutePicker" onclick="toggleDrum('editMinutePicker')">
-            <div class="drum-display">
-              <span id="editMinuteDisplay">00</span>
-              <span class="drum-label">min</span>
-            </div>
-            <div class="drum-controls">
-              <button class="drum-btn" onclick="event.stopPropagation(); stepDrum('editMinutePicker',1,59)">▲</button>
-              <button class="drum-btn" onclick="event.stopPropagation(); stepDrum('editMinutePicker',-1,59)">▼</button>
-            </div>
+          <div class="ios-wheel" id="editMinuteWheel">
+            <div class="ios-wheel-list" id="editMinuteList"></div>
           </div>
-          <!-- Changed: Hidden input keeps saveEdit() reading editMinute as before -->
-          <input type="hidden" id="editMinute" value="0" />
+          <div class="ios-wheel-label">minute</div>
+          <input type="hidden" id="editMinute" value="0" /> <!-- Changed: hidden input keeps saveEdit() reading editMinute exactly as before -->
         </div>
+        <!-- Changed: iOS wheel for editSecond — same as create form -->
         <div class="drum-picker-wrap">
           <label>Second (0–59)</label>
-          <!-- Changed: Edit modal Second drum picker — no browser popup -->
-          <div class="drum-picker" id="editSecondPicker" onclick="toggleDrum('editSecondPicker')">
-            <div class="drum-display">
-              <span id="editSecondDisplay">00</span>
-              <span class="drum-label">sec</span>
-            </div>
-            <div class="drum-controls">
-              <button class="drum-btn" onclick="event.stopPropagation(); stepDrum('editSecondPicker',1,59)">▲</button>
-              <button class="drum-btn" onclick="event.stopPropagation(); stepDrum('editSecondPicker',-1,59)">▼</button>
-            </div>
+          <div class="ios-wheel" id="editSecondWheel">
+            <div class="ios-wheel-list" id="editSecondList"></div>
           </div>
-          <!-- Changed: Hidden input keeps saveEdit() reading editSecond as before -->
-          <input type="hidden" id="editSecond" value="0" />
+          <div class="ios-wheel-label">second</div>
+          <input type="hidden" id="editSecond" value="0" /> <!-- Changed: hidden input keeps saveEdit() reading editSecond exactly as before -->
         </div>
       </div>
       <div class="form-field">
@@ -913,73 +920,104 @@ const DAYS = [ // preserved exactly
 ];
 
 // ════════════════════════════════════════════════════════════
-//  DRUM PICKER SYSTEM
-//  Changed: New module replacing native <select> for Minute/Second
-//  Why: Native selects open OS-level popups on iOS/Android; these stay fully in-page
+//  iOS WHEEL PICKER SYSTEM — for Minute (0-59) and Second (0-59)
+//  Changed: Replaces drum picker with scroll-snap iOS-style wheel
+//  Non-regressive: hidden inputs (jobMinute, jobSecond, editMinute,
+//  editSecond) still updated — createJob() and saveEdit() unchanged
 // ════════════════════════════════════════════════════════════
-const drumState = {}; // Changed: state store keyed by picker ID
 
-function initDrum(pickerId, max, val) { // Changed: sets up a picker with range 0..max and initial value
-  drumState[pickerId] = { value: parseInt(val) || 0, max };
-  renderDrum(pickerId);
-}
+const wheelState = {}; // Changed: stores { value, max, listEl, hiddenEl } per wheel
 
-function renderDrum(pickerId) { // Changed: syncs display span and hidden input from drumState
-  const s = drumState[pickerId]; if (!s) return;
-  const displayId = pickerId.replace('Picker', 'Display'); // Changed: e.g. jobMinutePicker -> jobMinuteDisplay
-  const hiddenId  = pickerId.replace('Picker', '');        // Changed: e.g. jobMinutePicker -> jobMinute
-  const displayEl = document.getElementById(displayId);
-  const hiddenEl  = document.getElementById(hiddenId);
-  if (displayEl) displayEl.textContent = String(s.value).padStart(2,'0'); // Changed: always 2-digit
-  if (hiddenEl) hiddenEl.value = s.value; // Changed: keeps original hidden input in sync for all existing JS reads
-}
+function initWheel(listId, hiddenId, max, initialVal) { // Changed: builds wheel items + wires scroll listener
+  const listEl   = document.getElementById(listId);
+  const hiddenEl = document.getElementById(hiddenId);
+  if (!listEl) return;
 
-function stepDrum(pickerId, delta, max) { // Changed: increments or decrements with wrap-around
-  const s = drumState[pickerId]; if (!s) return;
-  s.value = ((s.value + delta + max + 1) % (max + 1)); // Changed: modular arithmetic wraps 0↔max
-  renderDrum(pickerId);
-}
+  const initVal = parseInt(initialVal) || 0;
+  wheelState[listId] = { value: initVal, max, listEl, hiddenEl };
 
-function setDrumValue(pickerId, val) { // Changed: programmatic setter for openEdit() and buildSeqSelect()
-  const s = drumState[pickerId]; if (!s) return;
-  s.value = parseInt(val) || 0;
-  renderDrum(pickerId);
-}
-
-function toggleDrum(pickerId) { // Changed: opens picker list, closes if already open for this picker
-  const existing = document.querySelector('.drum-dropdown');
-  const existingFor = existing ? existing.dataset.for : null;
-  if (existing) existing.remove();
-  if (existingFor === pickerId) return; // Changed: second click on same picker = close
-  openDrumDropdown(pickerId);
-}
-
-function openDrumDropdown(pickerId) { // Changed: creates floating list fixed to viewport position of picker
-  const s = drumState[pickerId]; if (!s) return;
-  const pickerEl = document.getElementById(pickerId); if (!pickerEl) return;
-  const rect = pickerEl.getBoundingClientRect();
-
-  const dd = document.createElement('div'); // Changed: built dynamically to avoid DOM clutter
-  dd.className = 'drum-dropdown show';
-  dd.dataset.for = pickerId;
-  dd.style.cssText = `position:fixed;top:${rect.bottom + 4}px;left:${rect.left}px;width:${rect.width}px;`; // Changed: fixed positioning avoids overflow clipping
-
-  for (let i = 0; i <= s.max; i++) { // Changed: generate all 0..max options
-    const opt = document.createElement('div');
-    opt.className = 'drum-option' + (i === s.value ? ' selected' : ''); // Changed: highlights current value
-    opt.textContent = String(i).padStart(2,'0'); // Changed: always 2-digit label
-    opt.onclick = (e) => {
-      e.stopPropagation();
-      s.value = i; // Changed: direct assignment
-      renderDrum(pickerId);
-      const d = document.querySelector('.drum-dropdown'); if(d) d.remove();
-    };
-    dd.appendChild(opt);
+  // Changed: Build 0..max items as scroll-snap cells
+  listEl.innerHTML = '';
+  for (let i = 0; i <= max; i++) {
+    const item = document.createElement('div');
+    item.className = 'ios-wheel-item' + (i === initVal ? ' selected' : ''); // Changed: set selected class immediately
+    item.textContent = String(i).padStart(2, '0'); // Changed: always 2-digit display
+    item.dataset.val = i;
+    listEl.appendChild(item);
   }
 
-  document.body.appendChild(dd); // Changed: appended to body so not clipped by overflow:hidden parents
-  const sel = dd.querySelector('.selected');
-  if (sel) sel.scrollIntoView({ block: 'center' }); // Changed: auto-scrolls to selected item
+  // Changed: Use scrollTop (not scrollTo API) — works even on display:none elements
+  // ROOT CAUSE FIX: scrollTo() silently fails on hidden elements; scrollTop assignment does not
+  const itemH = 40;
+  listEl.scrollTop = initVal * itemH; // Changed: direct property assignment, works hidden
+
+  // Changed: Also set hiddenEl value immediately
+  if (hiddenEl) hiddenEl.value = initVal;
+
+  // Changed: Scroll listener — fires on scroll end, snaps value, updates hidden input
+  let scrollTimer;
+  listEl.addEventListener('scroll', () => {
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => syncWheelValue(listId), 80); // Changed: 80ms debounce after scroll stops
+  }, { passive: true });
+}
+
+function scrollWheelTo(listId, val, smooth) { // Changed: programmatically scrolls wheel to a value
+  const s = wheelState[listId]; if (!s) return;
+  const itemH = 40; // Changed: must match .ios-wheel-item height in CSS
+  val = Math.max(0, Math.min(val, s.max)); // Changed: clamp
+  s.value = val;
+  if (s.hiddenEl) s.hiddenEl.value = val; // Changed: keep hidden input synced
+  updateWheelHighlight(listId, val);
+  // Changed: scrollTop always works; scrollTo smooth only when element visible
+  if (smooth && s.listEl.offsetParent !== null) {
+    s.listEl.scrollTo({ top: val * itemH, behavior: 'smooth' }); // Changed: smooth only when visible
+  } else {
+    s.listEl.scrollTop = val * itemH; // Changed: direct assignment — works even display:none
+  }
+}
+
+function syncWheelValue(listId) { // Changed: reads scroll position → derives selected value
+  const s = wheelState[listId]; if (!s) return;
+  const itemH = 40; // Changed: match CSS height
+  const raw = Math.round(s.listEl.scrollTop / itemH); // Changed: nearest item
+  const val  = Math.max(0, Math.min(raw, s.max)); // Changed: clamp to valid range
+  if (val === s.value) return; // Changed: skip if no change
+  s.value = val;
+  if (s.hiddenEl) s.hiddenEl.value = val; // Changed: update hidden input — createJob()/saveEdit() reads this
+  updateWheelHighlight(listId, val);
+}
+
+function updateWheelHighlight(listId, val) { // Changed: applies .selected class to center item
+  const s = wheelState[listId]; if (!s) return;
+  s.listEl.querySelectorAll('.ios-wheel-item').forEach((el, i) => {
+    el.classList.toggle('selected', i === val); // Changed: only center item gets selected class + larger text
+  });
+}
+
+function resyncWheel(listId) { // Changed: re-applies scrollTop after parent becomes visible
+  const s = wheelState[listId]; if (!s) return;
+  const itemH = 40;
+  s.listEl.scrollTop = s.value * itemH; // Changed: re-confirm scroll position now element is visible
+  updateWheelHighlight(listId, s.value);
+}
+
+// Changed: setDrumValue — compat shim so buildSeqSelect() and openEdit() still work
+function setDrumValue(pickerId, val) { // Changed: maps old pickerId format to wheel listId format
+  // pickerId was e.g. "jobMinutePicker" → listId is "jobMinuteList"
+  const listId = pickerId.replace('Picker', 'List').replace('Drum', ''); // Changed: derive listId
+  if (wheelState[listId]) {
+    scrollWheelTo(listId, parseInt(val) || 0, true); // Changed: smooth scroll to value
+  }
+}
+
+// Changed: initDrum compat shim — called from buildSeqSelect compat wrapper
+function initDrum(pickerId, max, val) { // Changed: maps to initWheel using naming convention
+  const listId   = pickerId.replace('Picker', 'List');   // Changed: e.g. jobMinutePicker → jobMinuteList
+  const hiddenId = pickerId.replace('Picker', '').replace(/([A-Z])/g, (m,c) => c.toLowerCase()).replace('job','job').replace('edit','edit');
+  // Simplified: just derive hiddenId by removing 'Picker' suffix
+  const hid = pickerId.slice(0, -6); // Changed: removes "Picker" → "jobMinute", "jobSecond", etc.
+  initWheel(listId, hid, max, val);
 }
 
 // Changed: Close drum and unit drum on outside click
@@ -1024,7 +1062,8 @@ function setUnitValue(pickerId, val) { // Changed: programmatic setter used by o
   renderUnitDrum(pickerId);
 }
 
-function toggleUnitDrum(pickerId) { // Changed: open/close logic mirrors toggleDrum()
+function toggleUnitDrum(pickerId, event) { // Changed: accepts event to stopPropagation — prevents outside-click handler from immediately closing dropdown
+  if (event) event.stopPropagation(); // Changed: stops click from bubbling to document and triggering close
   const existing = document.querySelector('.unit-drum-dropdown');
   const existingFor = existing ? existing.dataset.for : null;
   if (existing) existing.remove();
@@ -1071,7 +1110,15 @@ function setScheduleMode(mode) { // Changed: replaces toggleScheduleMode() inlin
   document.getElementById('dailyMode').style.display   = isInterval ? 'none'  : 'block'; // preserved logic
   document.getElementById('schedBtnInterval').classList.toggle('active', isInterval);   // Changed: visual state
   document.getElementById('schedBtnDaily').classList.toggle('active', !isInterval);      // Changed: visual state
-  if (!isInterval) buildDayCheckboxes('jobDaysWrap', null); // preserved logic
+  if (!isInterval) {
+    buildDayCheckboxes('jobDaysWrap', null); // preserved logic
+    // Changed: Re-sync wheel scroll after dailyMode becomes visible
+    // Root cause fix: scrollTop set on hidden element gets confirmed here when element is shown
+    requestAnimationFrame(() => { // Changed: rAF ensures display:block has painted before scrollTop
+      resyncWheel('jobMinuteList');
+      resyncWheel('jobSecondList');
+    });
+  }
 }
 
 function toggleScheduleMode() { // Changed: backward-compat alias — routes to setScheduleMode
@@ -1097,10 +1144,13 @@ function updateHourLabel(inputId, labelId) { // Changed: new UX helper, no exist
 //  LEGACY buildSeqSelect — now drives drum pickers
 //  Changed: Redirected to drum system; preserves all existing call sites
 // ════════════════════════════════════════════════════════════
-function buildSeqSelect(elId, max, selectedVal) { // Changed: was <select> builder, now drum initializer
-  const pickerId = elId + 'Picker'; // Changed: "jobMinute" maps to "jobMinutePicker"
-  if (drumState[pickerId]) setDrumValue(pickerId, selectedVal); // Changed: update if exists
-  else initDrum(pickerId, max, selectedVal); // Changed: first-time init
+function buildSeqSelect(elId, max, selectedVal) { // Changed: now routes to iOS wheel system
+  const listId = elId + 'List'; // Changed: "jobMinute" → "jobMinuteList"
+  if (wheelState[listId]) {
+    scrollWheelTo(listId, parseInt(selectedVal) || 0, true); // Changed: smooth scroll if already init
+  } else {
+    initWheel(listId, elId, max, selectedVal); // Changed: first-time init
+  }
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1237,7 +1287,7 @@ async function fetchJobs(fetchSsl = true) {
         <td><a href="${escHtml(j.url)}" target="_blank" class="job-url">${escHtml(j.url)}</a></td>
         <td>${scheduleDisplay}</td>
         <td class="job-ssl-td ${sslCache[j.id]?.className || ''}" id="ssl-${j.id}">${sslCache[j.id]?.text || (fetchSsl ? '…' : '—')}</td>
-        <td style="text-align:right"><div class="dropdown"><button class="btn btn-ghost btn-sm">⋯</button><div class="dropdown-content">
+        <td style="text-align:right;background:transparent"><div class="dropdown"><button class="btn btn-ghost btn-sm">⋯</button><div class="dropdown-content">
           <a href="/jobs/${j.id}/status">📊 Status Page</a>
           <a onclick="openJobLogs('${j.id}','${escHtml(j.name)}')">📋 View Logs</a>
           <div class="div-line"></div>
@@ -1325,8 +1375,8 @@ async function createJob() {
     document.getElementById('jobUrl').value = '';
     document.getElementById('jobHour').value = '';
     document.getElementById('jobHourLabel').textContent = '—';
-    setDrumValue('jobMinutePicker', 0); // Changed: reset drum instead of rebuilding select
-    setDrumValue('jobSecondPicker', 0); // Changed: reset drum instead of rebuilding select
+    scrollWheelTo('jobMinuteList', 0, true); // Changed: reset Minute wheel to 0 after job created
+    scrollWheelTo('jobSecondList', 0, true); // Changed: reset Second wheel to 0 after job created
     setScheduleMode('interval'); // Changed: uses new toggle reset, same end result
     await fetchJobs();
   } catch (e) { toast(e.message, 'error'); }
@@ -1354,8 +1404,13 @@ function openEdit(id) {
   if (isDaily) {
     document.getElementById('editIntervalMode').style.display = 'none'; // preserved exactly
     document.getElementById('editDailyMode').style.display = 'block';   // preserved exactly
-    setDrumValue('editMinutePicker', j.minute || 0); // Changed: replaces buildSeqSelect, same value
-    setDrumValue('editSecondPicker', j.second || 0); // Changed: replaces buildSeqSelect, same value
+    // Changed: scrollTop first (works hidden), then rAF re-sync after modal paints
+    scrollWheelTo('editMinuteList', j.minute || 0, false);
+    scrollWheelTo('editSecondList', j.second || 0, false);
+    requestAnimationFrame(() => { // Changed: rAF ensures modal is visible before re-syncing scroll
+      resyncWheel('editMinuteList');
+      resyncWheel('editSecondList');
+    });
     document.getElementById('editHour').value     = j.hour;             // preserved exactly
     document.getElementById('editTimezone').value = j.timezone || 'UTC'; // preserved exactly
     buildDayCheckboxes('editDaysWrap', j.day_of_week || null);           // preserved exactly
@@ -1368,6 +1423,13 @@ function openEdit(id) {
     setUnitValue('editUnitPicker', unit); // Changed: sync unit drum display when editing existing job
   }
   document.getElementById('editModal').classList.add('open'); // preserved exactly
+  // Changed: re-sync wheels after modal becomes visible (opacity transition)
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => { // Changed: double rAF — first frame starts transition, second frame modal is painted
+      resyncWheel('editMinuteList');
+      resyncWheel('editSecondList');
+    });
+  });
 }
 function closeModal() { document.getElementById('editModal').classList.remove('open'); } // preserved exactly
 
@@ -1449,10 +1511,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Changed: Initialize drum pickers — replaces buildSeqSelect for Minute/Second fields
   initUnitDrum('jobUnitPicker',  'minutes'); // Changed: init interval unit drum for create form
   initUnitDrum('editUnitPicker', 'minutes'); // Changed: init interval unit drum for edit modal
-  initDrum('jobMinutePicker',  59, 0); // Changed: create/job Minute drum
-  initDrum('jobSecondPicker',  59, 0); // Changed: create/job Second drum
-  initDrum('editMinutePicker', 59, 0); // Changed: edit modal Minute drum
-  initDrum('editSecondPicker', 59, 0); // Changed: edit modal Second drum
+  // Changed: iOS wheel init — replaces initDrum; listId/hiddenId explicit for clarity
+  initWheel('jobMinuteList',  'jobMinute',  59, 0); // Changed: create form Minute wheel
+  initWheel('jobSecondList',  'jobSecond',  59, 0); // Changed: create form Second wheel
+  initWheel('editMinuteList', 'editMinute', 59, 0); // Changed: edit modal Minute wheel
+  initWheel('editSecondList', 'editSecond', 59, 0); // Changed: edit modal Second wheel
 
   updateHourLabel('jobHour',  'jobHourLabel');  // Changed: live AM/PM hint for create form
   updateHourLabel('editHour', 'editHourLabel'); // Changed: live AM/PM hint for edit modal
