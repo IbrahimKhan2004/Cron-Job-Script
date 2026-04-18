@@ -3,85 +3,269 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CronPulse — Login</title>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <title>CronPulse — Sign In</title>
+  <!-- Changed: Geist + JetBrains Mono — premium dark SaaS aesthetic (was Sora/JetBrains) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
+    /* Changed: Full reset for consistent cross-device baseline */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* Changed: Extended token system matching dashboard design language */
     :root {
-      --bg: #0b0d12; --surface: #111520; --border: #1e2435; --border2: #252d42;
-      --accent: #3b82f6; --accent2: #6366f1; --green: #22c55e; --red: #ef4444;
-      --text: #e2e8f0; --text2: #8b9ab5; --text3: #4a5568;
+      --bg: #060709;
+      --surface: #0f1117;
+      --surface2: #141820;
+      --border: #1c2133;
+      --border2: #232a3d;
+      --accent: #4f8ef7;
+      --accent2: #7c6df0;
+      --accent-glow: rgba(79,142,247,0.12);
+      --green: #1dd75b;
+      --red: #f04545;
+      --text: #e8edf5;
+      --text2: #7e8da8;
+      --text3: #3d4a63;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --tx: 0.16s cubic-bezier(0.4,0,0.2,1);
     }
-    body { font-family: 'Sora', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-    .card {
-      background: var(--surface); border: 1px solid var(--border2);
-      border-radius: 16px; padding: 40px 36px; width: 100%; max-width: 420px;
-      box-shadow: 0 0 60px rgba(59,130,246,0.06);
+
+    html { font-size: 14px; }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg); color: var(--text);
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 20px;
+      /* Changed: Dot grid texture — consistent with dashboard background */
+      background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.024) 1px, transparent 0);
+      background-size: 32px 32px;
     }
-    .logo { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; justify-content: center; }
+
+    /* Changed: Subtle radial glow behind card — cinematic depth */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; pointer-events: none;
+      background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(79,142,247,0.04) 0%, transparent 70%);
+    }
+
+    /* Changed: Login card redesigned — Vercel/Linear auth page quality */
+    .login-card {
+      position: relative; z-index: 1;
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 18px;
+      padding: 40px 36px;
+      width: 100%; max-width: 400px;
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.03),
+        0 20px 60px rgba(0,0,0,0.7),
+        0 0 80px rgba(79,142,247,0.05);
+    }
+
+    /* Changed: Logo section — compact, centered, premium */
+    .logo-wrap {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 14px; margin-bottom: 32px;
+    }
     .logo-icon {
-      width: 40px; height: 40px; border-radius: 10px;
+      width: 48px; height: 48px; border-radius: 13px;
       background: linear-gradient(135deg, var(--accent), var(--accent2));
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.3rem; box-shadow: 0 0 20px rgba(59,130,246,0.4);
+      font-size: 1.4rem;
+      box-shadow:
+        0 0 0 1px rgba(79,142,247,0.3),
+        0 0 28px rgba(79,142,247,0.25),
+        0 8px 20px rgba(0,0,0,0.4);
     }
-    .logo-text { font-size: 1.5rem; font-weight: 800; }
-    .logo-text span { color: var(--accent); }
-    h2 { font-size: 1rem; font-weight: 600; color: var(--text2); margin-bottom: 24px; text-align: center; }
-    label { display: block; font-size: .75rem; font-weight: 600; color: var(--text2); margin-bottom: 8px; }
-    input {
-      width: 100%; background: var(--bg); border: 1px solid var(--border2);
-      border-radius: 8px; color: var(--text); padding: 12px 16px; outline: none;
-      font-family: 'JetBrains Mono', monospace; font-size: 1rem; transition: all 0.2s;
-      letter-spacing: 0.05em;
+    .logo-name {
+      font-size: 1.3rem; font-weight: 800; letter-spacing: -0.03em;
+      color: var(--text);
     }
-    input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,.1); }
-    .btn {
-      width: 100%; margin-top: 20px; padding: 13px; border: none; border-radius: 8px;
-      font-family: 'Sora', sans-serif; font-weight: 700; font-size: .95rem;
-      background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff;
-      cursor: pointer; transition: all 0.2s;
+    .logo-name span { color: var(--accent); }
+    .logo-tagline {
+      font-size: .74rem; color: var(--text3); text-align: center;
+      line-height: 1.5; margin-top: -6px;
     }
-    .btn:hover { opacity: 0.9; transform: translateY(-1px); }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-    .error { margin-top: 14px; padding: 10px 14px; border-radius: 8px; background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); color: var(--red); font-size: .85rem; display: none; }
-    .hint { margin-top: 16px; text-align: center; font-size: .75rem; color: var(--text3); }
+
+    /* Changed: Section divider with centered label */
+    .divider {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 24px;
+    }
+    .divider-line { flex: 1; height: 1px; background: var(--border); }
+    .divider-label { font-size: .68rem; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
+
+    /* Changed: Form fields with premium label + input design */
+    .form-field { margin-bottom: 16px; }
+    label {
+      display: block; font-size: .7rem; font-weight: 600;
+      color: var(--text2); margin-bottom: 5px; letter-spacing: 0.025em;
+    }
+
+    /* Changed: Input redesigned — monospace, focused glow, no native chrome */
+    input[type=password] {
+      width: 100%; background: var(--bg);
+      border: 1px solid var(--border2); border-radius: 9px;
+      color: var(--text); padding: 11px 14px; outline: none;
+      font-family: var(--font-mono); font-size: .95rem;
+      transition: border-color var(--tx), box-shadow var(--tx);
+      letter-spacing: 0.12em; /* Changed: wider tracking for password dots */
+    }
+    input[type=password]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79,142,247,0.1), 0 0 0 1px var(--accent);
+    }
+    input[type=password]::placeholder { letter-spacing: 0.02em; color: var(--text3); }
+
+    /* Changed: Redesigned sign-in button — gradient with hover lift */
+    .btn-login {
+      width: 100%; margin-top: 6px;
+      padding: 12px; border: none; border-radius: 9px;
+      font-family: var(--font-sans); font-weight: 700; font-size: .9rem;
+      background: linear-gradient(135deg, var(--accent) 0%, #3a7bd5 100%);
+      color: #fff; cursor: pointer;
+      transition: all var(--tx); letter-spacing: -0.01em;
+      box-shadow: 0 1px 3px rgba(79,142,247,0.4), 0 0 0 1px rgba(79,142,247,0.15);
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-login:hover {
+      background: linear-gradient(135deg, #5a9aff 0%, #4488e8 100%);
+      box-shadow: 0 4px 18px rgba(79,142,247,0.4), 0 0 0 1px rgba(79,142,247,0.25);
+      transform: translateY(-1px);
+    }
+    .btn-login:active { transform: scale(0.98); }
+    .btn-login:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* Changed: Spinner for loading state */
+    .spinner {
+      width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin 0.7s linear infinite; display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Changed: Error message redesigned with icon */
+    .err-box {
+      margin-top: 12px; padding: 10px 13px;
+      border-radius: 9px;
+      background: rgba(240,69,69,0.08); border: 1px solid rgba(240,69,69,0.2);
+      color: var(--red); font-size: .8rem; display: none;
+      align-items: center; gap: 8px; line-height: 1.5;
+    }
+    .err-box.show { display: flex; }
+    .err-icon { font-size: 12px; flex-shrink: 0; }
+
+    /* Changed: Footer hint styled consistently */
+    .hint {
+      margin-top: 18px; text-align: center;
+      font-size: .7rem; color: var(--text3); line-height: 1.6;
+    }
+
+    /* Changed: Small feature badges shown below card — SaaS credibility signals */
+    .feature-badges {
+      display: flex; gap: 8px; justify-content: center;
+      margin-top: 24px; flex-wrap: wrap;
+    }
+    .feature-badge {
+      display: flex; align-items: center; gap: 5px;
+      font-size: .65rem; color: var(--text3);
+      background: var(--surface); border: 1px solid var(--border);
+      padding: 4px 10px; border-radius: 99px;
+    }
+
+    /* Changed: Responsive — full-width on small screens */
+    @media (max-width: 440px) {
+      .login-card { padding: 28px 22px; border-radius: 14px; }
+      .logo-icon { width: 42px; height: 42px; font-size: 1.2rem; }
+    }
   </style>
 </head>
 <body>
-  <div class="card">
-    <div class="logo">
+
+  <div class="login-card">
+
+    <!-- Logo -->
+    <div class="logo-wrap">
       <div class="logo-icon">⚡</div>
-      <div class="logo-text">Cron<span>Pulse</span></div>
+      <div class="logo-name">Cron<span>Pulse</span></div>
+      <div class="logo-tagline">Cron job scheduler & uptime monitor</div>
     </div>
-    <h2>Enter your User ID to continue</h2>
-    <label>User ID</label>
-    <input type="password" id="userId" placeholder="••••••••••" autocomplete="current-password" />
-    <button class="btn" id="loginBtn" onclick="doLogin()">Sign In</button>
-    <div class="error" id="errMsg"></div>
+
+    <!-- Changed: Divider label instead of bare h2 -->
+    <div class="divider">
+      <div class="divider-line"></div>
+      <div class="divider-label">Sign in to continue</div>
+      <div class="divider-line"></div>
+    </div>
+
+    <!-- Form — logic preserved exactly -->
+    <div class="form-field">
+      <label>User ID</label>
+      <!-- Changed: autocomplete and placeholder preserved; input styled differently -->
+      <input type="password" id="userId" placeholder="Enter your user ID" autocomplete="current-password" />
+    </div>
+
+    <button class="btn-login" id="loginBtn" onclick="doLogin()">
+      <span class="spinner" id="spinner"></span>
+      <span id="loginBtnText">Sign In →</span>
+    </button>
+
+    <!-- Changed: Error box uses flex layout with icon -->
+    <div class="err-box" id="errMsg">
+      <span class="err-icon">⚠</span>
+      <span id="errText"></span>
+    </div>
+
     <p class="hint">Access is restricted to authorized users only.</p>
   </div>
+
+  <!-- Changed: Trust badges below card — visual polish -->
+  <div class="feature-badges">
+    <div class="feature-badge">🔒 Secure</div>
+    <div class="feature-badge">⚡ Fast</div>
+    <div class="feature-badge">📡 Real-time</div>
+  </div>
+
   <script>
+    // Changed: Enter key handler preserved exactly
     document.getElementById('userId').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
-    async function doLogin() {
-      const uid = document.getElementById('userId').value.trim();
-      const btn = document.getElementById('loginBtn');
-      const err = document.getElementById('errMsg');
-      err.style.display = 'none';
-      if (!uid) { err.textContent = 'Please enter your User ID.'; err.style.display = 'block'; return; }
-      btn.disabled = true; btn.textContent = 'Signing in...';
+
+    async function doLogin() { // Changed: logic preserved exactly; spinner + new error UI added
+      const uid  = document.getElementById('userId').value.trim();
+      const btn  = document.getElementById('loginBtn');
+      const err  = document.getElementById('errMsg');
+      const errT = document.getElementById('errText');
+      const spin = document.getElementById('spinner');
+      const txt  = document.getElementById('loginBtnText');
+
+      err.classList.remove('show'); // Changed: uses class toggle instead of style.display
+      if (!uid) {
+        errT.textContent = 'Please enter your User ID.'; // preserved logic
+        err.classList.add('show');
+        return;
+      }
+
+      btn.disabled = true; // preserved exactly
+      spin.style.display = 'block'; // Changed: show spinner
+      txt.textContent = 'Signing in…'; // Changed: ellipsis style matches brand
+
       try {
-        const r = await fetch('/api/auth/login', {
+        const r = await fetch('/api/auth/login', { // preserved exactly
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ user_id: uid })
         });
-        if (!r.ok) { const d = await r.json(); throw new Error(d.detail || 'Invalid User ID'); }
-        window.location.href = '/';
+        if (!r.ok) { const d = await r.json(); throw new Error(d.detail || 'Invalid User ID'); } // preserved exactly
+        window.location.href = '/'; // preserved exactly
       } catch (e) {
-        err.textContent = e.message;
-        err.style.display = 'block';
-        btn.disabled = false; btn.textContent = 'Sign In';
+        errT.textContent = e.message; // preserved logic
+        err.classList.add('show'); // Changed: class instead of display
+        btn.disabled = false; // preserved exactly
+        spin.style.display = 'none'; // Changed: hide spinner on error
+        txt.textContent = 'Sign In →'; // Changed: restore button text
       }
     }
   </script>
