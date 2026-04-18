@@ -430,7 +430,7 @@
     const d = await res.json();
     document.getElementById('jobName').textContent = d.job.name || 'Untitled'; // preserved exactly
     document.getElementById('jobUrl').textContent  = d.job.url  || '';         // preserved exactly
-    document.getElementById('lastExecution').textContent = d.last_execution_time ? new Date(d.last_execution_time).toLocaleString() : '—'; // preserved exactly
+    document.getElementById('lastExecution').textContent = d.last_execution_time ? new Date(d.last_execution_time).toLocaleString('en-IN', {timeZone:'Asia/Kolkata'}) : '—'; // preserved exactly
     document.getElementById('sinceLast').textContent  = d.time_since_last_run || '—'; // preserved exactly
     document.getElementById('totalRuns').textContent   = d.total_runs;                 // preserved exactly
     document.getElementById('failedRuns').textContent  = d.failed_runs;               // preserved exactly
@@ -462,7 +462,7 @@
     }
     body.innerHTML = d.logs.map(l => `
       <tr>
-        <td class="mono">${new Date(l.timestamp).toLocaleString()}</td>
+        <td class="mono">${new Date(l.timestamp).toLocaleString('en-IN', {timeZone:'Asia/Kolkata'})}</td>
         <td><span class="badge ${l.success ? 'ok' : 'bad'}" style="gap:4px"><span class="badge-dot"></span>${escHtml(String(l.status || 'ERR'))}</span></td>
         <td class="mono" style="color:var(--text2)">${escHtml(l.url)}</td>
         <td style="color:${l.error ? '#fca5a5' : 'var(--text3)'}; font-family:var(--font-mono); font-size:.74rem">${l.error ? escHtml(l.error) : '—'}</td>
