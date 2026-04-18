@@ -1245,9 +1245,9 @@ async function checkSSL() {
   try {
     const d = await apiCall(`/api/ssl?hostname=${encodeURIComponent(host)}`);
     if (!d.valid) { result.className = 'ssl-result ssl-err'; result.innerHTML = `❌ SSL Error<div class="ssl-detail">${escHtml(d.error)}</div>`; }
-    else if (d.days_left <= 14) { result.className = 'ssl-result ssl-err'; result.innerHTML = `⚠️ Expires in <b>${d.days_left}</b> days — URGENT!<div class="ssl-detail">${new Date(d.expires).toLocaleDateString()}</div>`; }
-    else if (d.days_left <= 30) { result.className = 'ssl-result ssl-warn'; result.innerHTML = `⏳ Expires in <b>${d.days_left}</b> days<div class="ssl-detail">${new Date(d.expires).toLocaleDateString()}</div>`; }
-    else { result.className = 'ssl-result ssl-ok'; result.innerHTML = `✅ Valid — <b>${d.days_left}</b> days left<div class="ssl-detail">Expires ${new Date(d.expires).toLocaleDateString()}</div>`; }
+    else if (d.days_left <= 14) { result.className = 'ssl-result ssl-err'; result.innerHTML = `⚠️ Expires in <b>${d.days_left}</b> days — URGENT!<div class="ssl-detail">${new Date(d.expires).toLocaleDateString('en-IN', {timeZone:'Asia/Kolkata'})}</div>`; }
+    else if (d.days_left <= 30) { result.className = 'ssl-result ssl-warn'; result.innerHTML = `⏳ Expires in <b>${d.days_left}</b> days<div class="ssl-detail">${new Date(d.expires).toLocaleDateString('en-IN', {timeZone:'Asia/Kolkata'})}</div>`; }
+    else { result.className = 'ssl-result ssl-ok'; result.innerHTML = `✅ Valid — <b>${d.days_left}</b> days left<div class="ssl-detail">Expires ${new Date(d.expires).toLocaleDateString('en-IN', {timeZone:'Asia/Kolkata'})}</div>`; }
   } catch (e) { result.className = 'ssl-result ssl-err'; result.textContent = `Error: ${e.message}`; }
 }
 document.getElementById('sslHost').addEventListener('keydown', e => { if (e.key === 'Enter') checkSSL(); }); // preserved exactly
@@ -1287,7 +1287,7 @@ async function fetchJobs(fetchSsl = true) {
         <td><a href="${escHtml(j.url)}" target="_blank" class="job-url">${escHtml(j.url)}</a></td>
         <td>${scheduleDisplay}</td>
         <td class="job-ssl-td ${sslCache[j.id]?.className || ''}" id="ssl-${j.id}">${sslCache[j.id]?.text || (fetchSsl ? '…' : '—')}</td>
-        <td style="text-align:right;background:transparent"><div class="dropdown"><button class="btn btn-ghost btn-sm">⋯</button><div class="dropdown-content">
+        <td style="text-align:right"><div class="dropdown"><button class="btn btn-ghost btn-sm">⋯</button><div class="dropdown-content">
           <a href="/jobs/${j.id}/status">📊 Status Page</a>
           <a onclick="openJobLogs('${j.id}','${escHtml(j.name)}')">📋 View Logs</a>
           <div class="div-line"></div>
@@ -1336,7 +1336,7 @@ async function fetchLogs() {
     if (!allLogs.length) { container.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No logs yet</div><div class="empty-desc">Logs appear after jobs run</div></div>`; return; }
     container.innerHTML = allLogs.map(l => `
       <div class="log-entry">
-        <span class="log-ts">${new Date(l.timestamp).toLocaleString()}</span>
+        <span class="log-ts">${new Date(l.timestamp).toLocaleString('en-IN', {timeZone:'Asia/Kolkata'})}</span>
         <span class="badge ${l.success ? 'badge-green' : 'badge-red'}" style="min-width:54px;text-align:center">${l.status||'ERR'}</span>
         <span class="log-url">${escHtml(l.url)}</span>
         ${l.error ? `<small style="color:var(--red);width:100%;margin-left:150px;font-size:.7rem">⚠ ${escHtml(l.error)}</small>` : ''}
@@ -1481,7 +1481,7 @@ async function openJobLogs(id, name) {
     body.innerHTML = logs.map(l => `
       <div style="padding:11px 20px;border-bottom:1px solid var(--border);font-size:.83rem">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px;align-items:center">
-          <span style="color:var(--text3);font-family:var(--font-mono);font-size:.7rem">${new Date(l.timestamp).toLocaleString()}</span>
+          <span style="color:var(--text3);font-family:var(--font-mono);font-size:.7rem">${new Date(l.timestamp).toLocaleString('en-IN', {timeZone:'Asia/Kolkata'})}</span>
           <span class="badge ${l.success ? 'badge-green' : 'badge-red'}">${l.status}</span>
         </div>
         ${l.error ? `<div style="color:var(--red);font-size:.72rem;margin-top:2px;font-family:var(--font-mono)">⚠ ${escHtml(l.error)}</div>` : '<div style="color:var(--text3);font-size:.7rem">✓ Success</div>'}
