@@ -559,11 +559,10 @@
     /* ═══ DROPDOWN ═══ */
     .dropdown { position: relative; display: inline-block; }
     .dropdown-content {
-      display: none; position: absolute; right: 0; top: calc(100% + 4px);
+      display: none; position: fixed; /* Changed: fixed escapes overflow:auto clipping from table-wrap */
       background: var(--surface2); min-width: 160px;
-      box-shadow: var(--shadow-lg); z-index: 200;
+      box-shadow: var(--shadow-lg); z-index: 9000;
       border: 1px solid var(--border2); border-radius: 10px; overflow: hidden;
-      isolation: isolate; /* Changed: isolation:isolate prevents stacking context bleed that caused Actions cell bg mismatch */
     }
     .dropdown-content a {
       color: var(--text2); padding: 8px 13px; text-decoration: none;
@@ -574,7 +573,7 @@
     .dropdown-content a.danger { color: var(--red); }
     .dropdown-content a.danger:hover { background: var(--red-glow); }
     .dropdown-content .div-line { height: 1px; background: var(--border); margin: 3px 0; }
-    .dropdown:hover .dropdown-content { display: block; }
+    /* Changed: dropdown hover now handled by JS to support position:fixed coordinates */
 
     .job-ssl-td { font-family: var(--font-mono); font-size: .7rem; }
     .job-ssl-td.ok { color: var(--green); }
@@ -1022,6 +1021,31 @@ function initDrum(pickerId, max, val) { // Changed: maps to initWheel using nami
 // Changed: Close drum and unit drum on outside click
 document.addEventListener('click', () => {
   document.querySelectorAll('.drum-dropdown, .unit-drum-dropdown').forEach(d => d.remove()); // Changed: also closes unit picker
+});
+
+// Changed: JS-driven dropdown positioning — position:fixed requires coordinates set via JS
+// since CSS right:0 is relative to viewport, not the button. Hover still feels native.
+document.addEventListener('mouseover', e => {
+  const btn = e.target.closest('.dropdown');
+  if (!btn) return;
+  const menu = btn.querySelector('.dropdown-content');
+  if (!menu) return;
+  const rect = btn.getBoundingClientRect();
+  menu.style.top  = (rect.bottom + 4) + 'px';
+  menu.style.left = Math.max(4, rect.right - menu.offsetWidth || rect.right - 160) + 'px';
+  menu.style.display = 'block';
+  // recalc left after display so offsetWidth is real
+  requestAnimationFrame(() => {
+    menu.style.left = Math.max(4, rect.right - menu.offsetWidth) + 'px';
+  });
+});
+document.addEventListener('mouseout', e => {
+  const btn = e.target.closest('.dropdown');
+  if (!btn) return;
+  const to = e.relatedTarget;
+  if (btn.contains(to)) return; // still inside dropdown or its menu
+  const menu = btn.querySelector('.dropdown-content');
+  if (menu) menu.style.display = 'none';
 });
 
 
