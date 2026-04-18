@@ -52,7 +52,6 @@
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
-      overflow-x: hidden;
       /* Changed: Subtle dot grid texture, like Vercel/Cloudflare dashboard backgrounds */
       background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.022) 1px, transparent 0);
       background-size: 32px 32px;
@@ -127,7 +126,7 @@
     .btn-logout:hover { color: var(--red); border-color: rgba(240,69,69,0.35); background: var(--red-glow); }
 
     /* ═══ LAYOUT ═══ */
-    .page { display: grid; grid-template-columns: 296px 1fr; min-height: calc(100vh - 54px); }
+    .page { display: grid; grid-template-columns: 296px 1fr; min-height: calc(100vh - 54px); overflow-x: hidden; }
 
     .sidebar {
       border-right: 1px solid var(--border);
