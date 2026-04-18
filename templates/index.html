@@ -255,6 +255,28 @@
     }
     .drum-option:hover { background: var(--surface3); color: var(--text); }
     .drum-option.selected { background: var(--accent-glow); color: var(--accent); font-weight: 600; }
+    /* Changed: Interval unit drum picker — same drum system extended to unit selector (Minutes/Hours/Seconds/Days) */
+    .unit-drum-picker {
+      position: relative; height: 38px; background: var(--bg);
+      border: 1px solid var(--border2); border-radius: 8px;
+      flex: 1; cursor: pointer;
+      transition: border-color var(--tx), box-shadow var(--tx);
+      display: flex; align-items: center;
+    }
+    .unit-drum-picker:focus-within, .unit-drum-picker.focused {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79,142,247,0.1);
+    }
+    .unit-drum-display {
+      flex: 1; padding: 0 11px;
+      font-family: var(--font-sans); font-size: .82rem; font-weight: 600;
+      color: var(--text); user-select: none;
+      display: flex; align-items: center; justify-content: space-between; height: 100%;
+    }
+    .unit-drum-arrow {
+      font-size: 9px; color: var(--text3); transition: color var(--tx);
+    }
+    .unit-drum-picker:hover .unit-drum-arrow { color: var(--text2); }
 
     /* ═══ SCHEDULE TOGGLE ═══ */
     /* Changed: Replaced <select> for schedule type with inline segment control — no popup */
@@ -370,7 +392,7 @@
     .tab-panel.active { display: block; }
 
     /* ═══ TABLE ═══ */
-    .table-wrap { border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; background: var(--surface); }
+    .table-wrap { border: 1px solid var(--border); border-radius: var(--radius-lg); overflow-x: auto; overflow-y: visible; background: var(--surface); -webkit-overflow-scrolling: touch; } /* Changed: overflow-x:auto enables horizontal swipe on mobile to reach Actions column; overflow:hidden was blocking right scroll */
     .table-header {
       padding: 12px 18px; border-bottom: 1px solid var(--border);
       display: flex; align-items: center; justify-content: space-between;
@@ -608,12 +630,14 @@
           <label>Run Every</label>
           <div class="interval-row">
             <input type="number" id="jobInterval" value="5" min="1" />
-            <select id="jobIntervalUnit" style="flex:1">
-              <option value="minutes">Minutes</option>
-              <option value="seconds">Seconds</option>
-              <option value="hours">Hours</option>
-              <option value="days">Days</option>
-            </select>
+<!-- Changed: Unit selector replaced with drum picker — no Chrome popup; logic reads hidden input jobIntervalUnit same as before -->
+            <div class="unit-drum-picker" id="jobUnitPicker" onclick="toggleUnitDrum('jobUnitPicker')">
+              <div class="unit-drum-display">
+                <span id="jobUnitDisplay">Minutes</span>
+                <span class="unit-drum-arrow">▾</span>
+              </div>
+            </div>
+            <input type="hidden" id="jobIntervalUnit" value="minutes" /> <!-- Changed: hidden input keeps toSeconds() reading jobIntervalUnit exactly as before -->
           </div>
         </div>
       </div>
@@ -783,12 +807,14 @@
         <label>Run Every</label>
         <div class="interval-row">
           <input type="number" id="editInterval" min="1" />
-          <select id="editIntervalUnit" style="flex:1">
-            <option value="minutes">Minutes</option>
-            <option value="seconds">Seconds</option>
-            <option value="hours">Hours</option>
-            <option value="days">Days</option>
-          </select>
+<!-- Changed: Edit unit selector replaced with drum picker — no Chrome popup; saveEdit() reads hidden input editIntervalUnit same as before -->
+          <div class="unit-drum-picker" id="editUnitPicker" onclick="toggleUnitDrum('editUnitPicker')">
+            <div class="unit-drum-display">
+              <span id="editUnitDisplay">Minutes</span>
+              <span class="unit-drum-arrow">▾</span>
+            </div>
+          </div>
+          <input type="hidden" id="editIntervalUnit" value="minutes" /> <!-- Changed: hidden input keeps fromSeconds()/toSeconds() reading editIntervalUnit exactly as before -->
         </div>
       </div>
     </div>
@@ -956,11 +982,84 @@ function openDrumDropdown(pickerId) { // Changed: creates floating list fixed to
   if (sel) sel.scrollIntoView({ block: 'center' }); // Changed: auto-scrolls to selected item
 }
 
-// Changed: Close drum on outside click
+// Changed: Close drum and unit drum on outside click
 document.addEventListener('click', () => {
-  const dd = document.querySelector('.drum-dropdown'); if(dd) dd.remove();
+  document.querySelectorAll('.drum-dropdown, .unit-drum-dropdown').forEach(d => d.remove()); // Changed: also closes unit picker
 });
 
+
+// ════════════════════════════════════════════════════════════
+//  UNIT DRUM PICKER — for interval unit (Minutes/Hours/Seconds/Days)
+//  Changed: Replaces native <select> popups for jobIntervalUnit and editIntervalUnit
+//  Why: Same reason as minute/second — Chrome/Android opens OS-level popup
+//  Non-regressive: hidden inputs jobIntervalUnit/editIntervalUnit still updated
+// ════════════════════════════════════════════════════════════
+const UNIT_OPTIONS = [ // Changed: ordered list of interval unit choices
+  { value: 'seconds', label: 'Seconds' },
+  { value: 'minutes', label: 'Minutes' },
+  { value: 'hours',   label: 'Hours'   },
+  { value: 'days',    label: 'Days'    },
+];
+
+const unitState = {}; // Changed: stores selected value per picker ID
+
+function initUnitDrum(pickerId, initialVal) { // Changed: sets up unit drum with initial value
+  unitState[pickerId] = initialVal || 'minutes';
+  renderUnitDrum(pickerId);
+}
+
+function renderUnitDrum(pickerId) { // Changed: syncs display label and hidden input
+  const val = unitState[pickerId];
+  const opt = UNIT_OPTIONS.find(o => o.value === val) || UNIT_OPTIONS[1]; // Changed: fallback to Minutes
+  const displayId = pickerId.replace('UnitPicker', 'UnitDisplay'); // Changed: e.g. jobUnitPicker → jobUnitDisplay
+  const hiddenId  = pickerId === 'jobUnitPicker' ? 'jobIntervalUnit' : 'editIntervalUnit'; // Changed: maps to original hidden input IDs
+  const displayEl = document.getElementById(displayId);
+  const hiddenEl  = document.getElementById(hiddenId);
+  if (displayEl) displayEl.textContent = opt.label; // Changed: update visible label
+  if (hiddenEl)  hiddenEl.value = val; // Changed: keeps original hidden input synced — toSeconds() reads this
+}
+
+function setUnitValue(pickerId, val) { // Changed: programmatic setter used by openEdit()
+  unitState[pickerId] = val;
+  renderUnitDrum(pickerId);
+}
+
+function toggleUnitDrum(pickerId) { // Changed: open/close logic mirrors toggleDrum()
+  const existing = document.querySelector('.unit-drum-dropdown');
+  const existingFor = existing ? existing.dataset.for : null;
+  if (existing) existing.remove();
+  if (existingFor === pickerId) return; // Changed: second click closes
+  openUnitDropdown(pickerId);
+}
+
+function openUnitDropdown(pickerId) { // Changed: creates floating options list
+  const pickerEl = document.getElementById(pickerId); if (!pickerEl) return;
+  const rect = pickerEl.getBoundingClientRect();
+
+  const dd = document.createElement('div'); // Changed: dynamically built — no DOM clutter
+  dd.className = 'drum-dropdown unit-drum-dropdown show'; // Changed: reuses drum-dropdown styles
+  dd.dataset.for = pickerId;
+  dd.style.cssText = `position:fixed;top:${rect.bottom+4}px;left:${rect.left}px;width:${rect.width}px;z-index:9999;`; // Changed: fixed pos avoids overflow clipping
+
+  UNIT_OPTIONS.forEach(opt => { // Changed: renders all 4 unit options
+    const el = document.createElement('div');
+    el.className = 'drum-option' + (opt.value === unitState[pickerId] ? ' selected' : ''); // Changed: marks current
+    el.textContent = opt.label;
+    el.onclick = (e) => {
+      e.stopPropagation();
+      unitState[pickerId] = opt.value; // Changed: update state
+      renderUnitDrum(pickerId); // Changed: sync display + hidden input
+      const d = document.querySelector('.unit-drum-dropdown'); if(d) d.remove();
+    };
+    dd.appendChild(el);
+  });
+
+  document.body.appendChild(dd); // Changed: body append avoids overflow:hidden clipping
+  const sel = dd.querySelector('.selected');
+  if (sel) sel.scrollIntoView({ block: 'center' });
+}
+
+// Changed: Close unit dropdown on outside click (merged into existing outside-click handler)
 // ════════════════════════════════════════════════════════════
 //  SCHEDULE MODE TOGGLE
 //  Changed: Uses inline segment buttons instead of <select> — no popup
@@ -1266,6 +1365,7 @@ function openEdit(id) {
     const { val, unit } = fromSeconds(j.interval_seconds || 0);          // preserved exactly
     document.getElementById('editInterval').value     = val;             // preserved exactly
     document.getElementById('editIntervalUnit').value = unit;            // preserved exactly
+    setUnitValue('editUnitPicker', unit); // Changed: sync unit drum display when editing existing job
   }
   document.getElementById('editModal').classList.add('open'); // preserved exactly
 }
@@ -1347,6 +1447,8 @@ setInterval(checkHealth, 30000);            // preserved exactly
 // ══ INIT ══
 document.addEventListener('DOMContentLoaded', async () => {
   // Changed: Initialize drum pickers — replaces buildSeqSelect for Minute/Second fields
+  initUnitDrum('jobUnitPicker',  'minutes'); // Changed: init interval unit drum for create form
+  initUnitDrum('editUnitPicker', 'minutes'); // Changed: init interval unit drum for edit modal
   initDrum('jobMinutePicker',  59, 0); // Changed: create/job Minute drum
   initDrum('jobSecondPicker',  59, 0); // Changed: create/job Second drum
   initDrum('editMinutePicker', 59, 0); // Changed: edit modal Minute drum
