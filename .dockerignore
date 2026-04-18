@@ -1,0 +1,18 @@
+# Changed: .dockerignore added — stops Docker
+# from sending unnecessary files to build context
+# Why: Smaller context = faster build start
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.git/
+.gitignore
+.env
+*.md
+.github/
+*.log
+.DS_Store
+Thumbs.db
