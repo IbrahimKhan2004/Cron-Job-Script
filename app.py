@@ -4,9 +4,11 @@ Manages dynamic cron jobs via MongoDB + APScheduler.
 """
 
 import asyncio
+import collections
 import os
 import ssl
 import socket
+import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Optional
@@ -52,15 +54,25 @@ scheduler = AsyncIOScheduler()
 db_client: Optional[AsyncIOMotorClient] = None
 db = None
 
+# In-memory log storage: { job_id: deque([log_entry, ...], maxlen=10) }
+MEMORY_LOGS = collections.defaultdict(lambda: collections.deque(maxlen=10))
+
 # ─── Job runner ───────────────────────────────────────────────────────────────
 
 async def run_cron_job(job_id: str, url: str) -> None:
     started_at = datetime.now(timezone.utc)
-    log_entry: dict = {"job_id": job_id, "url": url, "timestamp": started_at}
+    # Generate a unique ID for the log entry since it's not in DB
+    log_id = str(uuid.uuid4())
+    log_entry: dict = {
+        "_id": log_id,
+        "job_id": job_id,
+        "url": url,
+        "timestamp": started_at
+    }
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
-                body_preview = (await resp.text())[:200]
+                body_preview = (await resp.text())[:100]  # Keep it small for RAM
                 log_entry.update({
                     "status": resp.status,
                     "success": 200 <= resp.status < 400,
@@ -75,8 +87,8 @@ async def run_cron_job(job_id: str, url: str) -> None:
         log_entry.update({"status": "error", "success": False, "error": str(exc)})
         print(f"[CRON] ✗ {url}  →  ERROR: {exc}")
     finally:
-        if db is not None:
-            await db.logs.insert_one(log_entry)
+        # Append to in-memory logs instead of DB
+        MEMORY_LOGS[job_id].appendleft(log_entry)
 
 # ─── SSL Checker ──────────────────────────────────────────────────────────────
 
@@ -119,9 +131,6 @@ async def lifespan(app: FastAPI):
 
     db_client = AsyncIOMotorClient(settings.mongodb_uri)
     db = db_client[settings.database_name]
-
-    await db.logs.create_index([("job_id", 1), ("timestamp", -1)])
-    await db.logs.create_index([("timestamp", -1)])
 
     async for job in db.jobs.find():
         job_id = str(job["_id"])
@@ -352,7 +361,9 @@ async def delete_job(job_id: str, session_id: Optional[str] = Cookie(default=Non
     if uid != ADMIN_ID and doc.get("owner_id") != uid:
         raise HTTPException(status_code=403, detail="Access denied")
     await db.jobs.delete_one({"_id": obj_id})
-    await db.logs.delete_many({"job_id": job_id})
+    # Remove logs from memory
+    if job_id in MEMORY_LOGS:
+        del MEMORY_LOGS[job_id]
     _unschedule_job(job_id)
     return {"status": "deleted"}
 
@@ -405,15 +416,23 @@ async def update_job(job_id: str, job_update: JobUpdate, session_id: Optional[st
 @app.get("/api/logs")
 async def get_all_logs(limit: int = 100, session_id: Optional[str] = Cookie(default=None)):
     uid = require_user(session_id)
+
+    # Collect logs from MEMORY_LOGS
+    all_logs = []
     if uid == ADMIN_ID:
-        cursor = db.logs.find().sort("timestamp", -1).limit(limit)
+        for job_id, logs in MEMORY_LOGS.items():
+            all_logs.extend(list(logs))
     else:
-        owned = [str(doc["_id"]) async for doc in db.jobs.find({"owner_id": uid})]
-        cursor = db.logs.find({"job_id": {"$in": owned}}).sort("timestamp", -1).limit(limit)
-    logs = []
-    async for doc in cursor:
-        logs.append(_serialize_log(doc))
-    return logs
+        async for doc in db.jobs.find({"owner_id": uid}):
+            jid = str(doc["_id"])
+            if jid in MEMORY_LOGS:
+                all_logs.extend(list(MEMORY_LOGS[jid]))
+
+    # Sort by timestamp desc and limit
+    all_logs.sort(key=lambda x: x["timestamp"], reverse=True)
+
+    serialized = [_serialize_log(log) for log in all_logs[:limit]]
+    return serialized
 
 @app.get("/api/jobs/{job_id}/logs")
 async def get_job_logs(job_id: str, limit: int = 50, session_id: Optional[str] = Cookie(default=None)):
@@ -425,10 +444,10 @@ async def get_job_logs(job_id: str, limit: int = 50, session_id: Optional[str] =
             raise HTTPException(status_code=400, detail="Invalid ID")
         if not doc or doc.get("owner_id") != uid:
             raise HTTPException(status_code=403, detail="Access denied")
-    logs = []
-    async for doc in db.logs.find({"job_id": job_id}).sort("timestamp", -1).limit(limit):
-        logs.append(_serialize_log(doc))
-    return logs
+
+    job_logs = list(MEMORY_LOGS.get(job_id, []))
+    serialized = [_serialize_log(log) for log in job_logs[:limit]]
+    return serialized
 
 @app.delete("/api/jobs/{job_id}/logs")
 async def clear_job_logs(job_id: str, session_id: Optional[str] = Cookie(default=None)):
@@ -440,8 +459,13 @@ async def clear_job_logs(job_id: str, session_id: Optional[str] = Cookie(default
             raise HTTPException(status_code=400, detail="Invalid ID")
         if not doc or doc.get("owner_id") != uid:
             raise HTTPException(status_code=403, detail="Access denied")
-    result = await db.logs.delete_many({"job_id": job_id})
-    return {"deleted": result.deleted_count}
+
+    count = 0
+    if job_id in MEMORY_LOGS:
+        count = len(MEMORY_LOGS[job_id])
+        MEMORY_LOGS[job_id].clear()
+
+    return {"deleted": count}
 
 @app.get("/api/available-hours")
 async def get_available_hours(session_id: Optional[str] = Cookie(default=None)):
@@ -460,8 +484,6 @@ async def get_available_timezones(session_id: Optional[str] = Cookie(default=Non
 def _serialize_log(doc: dict) -> dict:
     timestamp = doc.get("timestamp")
     if hasattr(timestamp, "isoformat"):
-        # MongoDB returns naive datetimes (no tzinfo) even for UTC-stored values.
-        # Attaching UTC explicitly ensures JS new Date() parses as UTC, not local time.
         if timestamp.tzinfo is None:
             timestamp = timestamp.replace(tzinfo=timezone.utc)
         timestamp = timestamp.isoformat()
@@ -479,7 +501,10 @@ def _serialize_log(doc: dict) -> dict:
 def _get_db():
     return db
 
-app.include_router(create_status_router(_get_db, require_user, ADMIN_ID, templates, _serialize_log))
+def _get_memory_logs():
+    return MEMORY_LOGS
+
+app.include_router(create_status_router(_get_db, _get_memory_logs, require_user, ADMIN_ID, templates, _serialize_log))
 
 if __name__ == "__main__":
     import uvicorn

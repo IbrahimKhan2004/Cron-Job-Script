@@ -29,6 +29,7 @@ def _relative_time_from(dt: Optional[datetime]) -> str:
 
 def create_status_router(
     db_getter: Callable,
+    memory_logs_getter: Callable,
     require_user_fn: Callable,
     admin_id: str,
     templates: Jinja2Templates,
@@ -63,22 +64,26 @@ def create_status_router(
     async def job_status(job_id: str, session_id: Optional[str] = Cookie(default=None)):
         uid = require_user_fn(session_id)
         job = await _authorized_job(job_id, uid)
-        db = db_getter()
 
-        total_runs = await db.logs.count_documents({"job_id": job_id})
-        failed_runs = await db.logs.count_documents({"job_id": job_id, "success": False})
-        last_log = await db.logs.find({"job_id": job_id}).sort("timestamp", -1).limit(1).to_list(length=1)
-        last_failed = await db.logs.find({"job_id": job_id, "success": False}).sort("timestamp", -1).limit(1).to_list(length=1)
+        memory_logs = memory_logs_getter()
+        job_logs = list(memory_logs.get(job_id, []))
 
-        last_entry = serialize_log_fn(last_log[0]) if last_log else None
-        last_error = last_failed[0].get("error") if last_failed else None
-        last_ts = last_log[0].get("timestamp") if last_log else None
+        total_runs = len(job_logs)
+        failed_logs = [l for l in job_logs if l.get("success") is False]
+        failed_runs = len(failed_logs)
+
+        last_log = job_logs[0] if job_logs else None
+        last_failed = failed_logs[0] if failed_logs else None
+
+        last_entry = serialize_log_fn(last_log) if last_log else None
+        last_error = last_failed.get("error") if last_failed else None
+        last_ts = last_log.get("timestamp") if last_log else None
 
         if total_runs == 0:
             status_label = "never"
-        elif last_log[0].get("success") is True:
+        elif last_log.get("success") is True:
             status_label = "success"
-        elif last_log[0].get("status") == "timeout":
+        elif last_log.get("status") == "timeout":
             status_label = "warning"
         else:
             status_label = "failed"
@@ -106,13 +111,14 @@ def create_status_router(
     async def job_status_logs(job_id: str, failed_only: bool = False, session_id: Optional[str] = Cookie(default=None)):
         uid = require_user_fn(session_id)
         await _authorized_job(job_id, uid)
-        db = db_getter()
-        query = {"job_id": job_id}
+
+        memory_logs = memory_logs_getter()
+        job_logs = list(memory_logs.get(job_id, []))
+
         if failed_only:
-            query["success"] = False
-        logs = []
-        async for doc in db.logs.find(query).sort("timestamp", -1).limit(20):
-            logs.append(serialize_log_fn(doc))
+            job_logs = [l for l in job_logs if l.get("success") is False]
+
+        logs = [serialize_log_fn(doc) for doc in job_logs[:20]]
         return {"logs": logs, "limit": 20, "failed_only": failed_only}
 
     return router
