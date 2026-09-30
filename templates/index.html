@@ -1532,9 +1532,9 @@ function switchTab(tab, btn) {
 async function refreshAll() { await Promise.all([checkHealth(), fetchJobs(), fetchLogs()]); } // preserved exactly
 
 // ══ TIMERS — preserved exactly ══
-setInterval(() => fetchJobs(false), 10000); // preserved exactly
-setInterval(fetchLogs, 15000);              // preserved exactly
-setInterval(checkHealth, 30000);            // preserved exactly
+setInterval(() => document.hidden || fetchJobs(false), 60000);
+setInterval(() => document.hidden || fetchLogs(), 30000);
+setInterval(() => document.hidden || checkHealth(), 120000);
 
 // ══ INIT ══
 document.addEventListener('DOMContentLoaded', async () => {
