@@ -73,11 +73,9 @@ async def run_cron_job(job_id: str, url: str) -> None:
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
-                body_preview = (await resp.content.read(100)).decode("utf-8", "ignore")  # read only 100 bytes, rest never downloaded
                 log_entry.update({
                     "status": resp.status,
                     "success": 200 <= resp.status < 400,
-                    "response_preview": body_preview,
                     "error": None,
                 })
                 print(f"[CRON] ✓ {url}  →  HTTP {resp.status}")
