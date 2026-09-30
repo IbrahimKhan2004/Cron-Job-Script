@@ -72,13 +72,16 @@ async def run_cron_job(job_id: str, url: str) -> None:
     }
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
-                log_entry.update({
-                    "status": resp.status,
-                    "success": 200 <= resp.status < 400,
-                    "error": None,
-                })
-                print(f"[CRON] ✓ {url}  →  HTTP {resp.status}")
+            for method in ("HEAD", "GET"):  # HEAD = target sends no body; GET only if HEAD not allowed (405)
+                async with session.request(method, url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+                    if resp.status != 405:
+                        break
+            log_entry.update({
+                "status": resp.status,
+                "success": 200 <= resp.status < 400,
+                "error": None,
+            })
+            print(f"[CRON] ✓ {url}  →  HTTP {resp.status}")
     except asyncio.TimeoutError:
         log_entry.update({"status": "timeout", "success": False, "error": "Request timed out"})
         print(f"[CRON] ✗ {url}  →  TIMEOUT")
