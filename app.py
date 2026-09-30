@@ -20,6 +20,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.cron import CronTrigger
 from bson import ObjectId
 from fastapi import FastAPI, HTTPException, Request, Response, Cookie
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -72,7 +73,7 @@ async def run_cron_job(job_id: str, url: str) -> None:
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
-                body_preview = (await resp.text())[:100]  # Keep it small for RAM
+                body_preview = (await resp.content.read(100)).decode("utf-8", "ignore")  # read only 100 bytes, rest never downloaded
                 log_entry.update({
                     "status": resp.status,
                     "success": 200 <= resp.status < 400,
@@ -188,6 +189,7 @@ def _unschedule_job(job_id: str) -> None:
 # ─── FastAPI app ──────────────────────────────────────────────────────────────
 
 app = FastAPI(title="CronPulse", version="3.0.0", lifespan=lifespan)
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 # ─── Auth helpers ─────────────────────────────────────────────────────────────
 
