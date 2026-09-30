@@ -56,6 +56,11 @@ This project is pre-configured for deployment on Render or Heroku.
 
 ## Changelog
 
+### v3.1.2 - Bandwidth Optimization
+- Enabled gzip on all responses (JSON/HTML ~85-90% smaller).
+- Dashboard and status page now stop polling while the browser tab is hidden; dashboard intervals raised (jobs 60s, logs 30s, health 120s) and status page auto-refresh default is now 7s.
+- Cron pings now read only the first 100 bytes of the target response instead of downloading the whole body.
+
 ### v3.1.1 - Managed Jobs Ping/SSL Display Update
 - Updated Managed Jobs next-ping text format to show day/hr/min/sec words for clearer countdown readability.
 - Updated Managed Jobs auto-refresh behavior so periodic refresh updates ping timing without triggering automatic SSL re-check requests.
