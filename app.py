@@ -142,7 +142,7 @@ async def lifespan(app: FastAPI):
     db_client = AsyncIOMotorClient(settings.mongodb_uri)
     db = db_client[settings.database_name]
     await db.drop_collection("logs")
-    http_session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=100, keepalive_timeout=30))
+    http_session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=100, keepalive_timeout=75))
 
     async for job in db.jobs.find():
         job_id = str(job["_id"])
