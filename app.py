@@ -54,6 +54,7 @@ SUPPORTED_TIMEZONES = {"UTC": "UTC", "IST": "Asia/Kolkata"}
 scheduler = AsyncIOScheduler()
 db_client: Optional[AsyncIOMotorClient] = None
 db = None
+http_session: Optional[aiohttp.ClientSession] = None
 
 # In-memory log storage: { job_id: deque([log_entry, ...], maxlen=10) }
 MEMORY_LOGS = collections.defaultdict(lambda: collections.deque(maxlen=10))
@@ -62,7 +63,6 @@ MEMORY_LOGS = collections.defaultdict(lambda: collections.deque(maxlen=10))
 
 async def run_cron_job(job_id: str, url: str) -> None:
     started_at = datetime.now(timezone.utc)
-    # Generate a unique ID for the log entry since it's not in DB
     log_id = str(uuid.uuid4())
     log_entry: dict = {
         "_id": log_id,
@@ -70,18 +70,16 @@ async def run_cron_job(job_id: str, url: str) -> None:
         "url": url,
         "timestamp": started_at
     }
+    timeout = aiohttp.ClientTimeout(total=10)
+    session = http_session
+
     try:
-        async with aiohttp.ClientSession() as session:
-            for method in ("HEAD", "GET"):  # HEAD = target sends no body; GET only if HEAD not allowed (405)
-                async with session.request(method, url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
-                    if resp.status != 405:
-                        break
-            log_entry.update({
-                "status": resp.status,
-                "success": 200 <= resp.status < 400,
-                "error": None,
-            })
-            print(f"[CRON] ✓ {url}  →  HTTP {resp.status}")
+        if session is None or session.closed:
+            # Fallback if global session is not yet initialized
+            async with aiohttp.ClientSession() as temp_session:
+                await _execute_ping(temp_session, url, timeout, log_entry)
+        else:
+            await _execute_ping(session, url, timeout, log_entry)
     except asyncio.TimeoutError:
         log_entry.update({"status": "timeout", "success": False, "error": "Request timed out"})
         print(f"[CRON] ✗ {url}  →  TIMEOUT")
@@ -89,8 +87,40 @@ async def run_cron_job(job_id: str, url: str) -> None:
         log_entry.update({"status": "error", "success": False, "error": str(exc)})
         print(f"[CRON] ✗ {url}  →  ERROR: {exc}")
     finally:
-        # Append to in-memory logs instead of DB
         MEMORY_LOGS[job_id].appendleft(log_entry)
+
+async def _execute_ping(session: aiohttp.ClientSession, url: str, timeout: aiohttp.ClientTimeout, log_entry: dict) -> None:
+    # 1. Try HEAD request first (downloads 0 body bytes)
+    head_headers = {"User-Agent": "CronPulse/3.0"}
+    try:
+        async with session.head(url, headers=head_headers, timeout=timeout, allow_redirects=True) as resp:
+            if resp.status != 405:
+                log_entry.update({
+                    "status": resp.status,
+                    "success": 200 <= resp.status < 400,
+                    "error": None,
+                })
+                print(f"[CRON] ✓ HEAD {url}  →  HTTP {resp.status}")
+                return
+    except Exception as head_exc:
+        # Fall through to GET range request if HEAD method is blocked/fails
+        pass
+
+    # 2. Fallback to GET with Range header (fetches at most 100 bytes)
+    get_headers = {
+        "User-Agent": "CronPulse/3.0",
+        "Range": "bytes=0-99",
+        "Accept-Encoding": "identity"
+    }
+    async with session.get(url, headers=get_headers, timeout=timeout, allow_redirects=True) as resp:
+        await resp.content.read(100)
+        resp.close()
+        log_entry.update({
+            "status": resp.status,
+            "success": 200 <= resp.status < 400,
+            "error": None,
+        })
+        print(f"[CRON] ✓ GET(Range) {url}  →  HTTP {resp.status}")
 
 # ─── SSL Checker ──────────────────────────────────────────────────────────────
 
