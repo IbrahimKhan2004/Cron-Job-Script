@@ -269,7 +269,7 @@ async def index(request: Request, response: Response, session_id: Optional[str] 
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     return templates.TemplateResponse(request, "index.html")
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health_check():
     return {"status": "ok", "jobs": len(scheduler.get_jobs())}
 
