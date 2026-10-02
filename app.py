@@ -54,6 +54,7 @@ SUPPORTED_TIMEZONES = {"UTC": "UTC", "IST": "Asia/Kolkata"}
 scheduler = AsyncIOScheduler()
 db_client: Optional[AsyncIOMotorClient] = None
 db = None
+http_session: Optional[aiohttp.ClientSession] = None
 
 # In-memory log storage: { job_id: deque([log_entry, ...], maxlen=10) }
 MEMORY_LOGS = collections.defaultdict(lambda: collections.deque(maxlen=10))
@@ -71,17 +72,24 @@ async def run_cron_job(job_id: str, url: str) -> None:
         "timestamp": started_at
     }
     try:
-        async with aiohttp.ClientSession() as session:
-            for method in ("HEAD", "GET"):  # HEAD = target sends no body; GET only if HEAD not allowed (405)
-                async with session.request(method, url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
-                    if resp.status != 405:
-                        break
-            log_entry.update({
-                "status": resp.status,
-                "success": 200 <= resp.status < 400,
-                "error": None,
-            })
-            print(f"[CRON] ✓ {url}  →  HTTP {resp.status}")
+        hdr, tmo = {"User-Agent": "CronPulse/3.0"}, aiohttp.ClientTimeout(total=10)
+        try:  # HEAD = target sends no body
+            async with http_session.head(url, headers=hdr, timeout=tmo, allow_redirects=True) as resp:
+                status = resp.status
+        except Exception:
+            status = 405
+        if status == 405:  # GET fallback: read max 100 bytes, then drop the connection
+            hdr = {**hdr, "Range": "bytes=0-99", "Accept-Encoding": "identity"}
+            async with http_session.get(url, headers=hdr, timeout=tmo, allow_redirects=True) as resp:
+                await resp.content.read(100)
+                resp.close()
+                status = resp.status
+        log_entry.update({
+            "status": status,
+            "success": 200 <= status < 400,
+            "error": None,
+        })
+        print(f"[CRON] ✓ {url}  →  HTTP {status}")
     except asyncio.TimeoutError:
         log_entry.update({"status": "timeout", "success": False, "error": "Request timed out"})
         print(f"[CRON] ✗ {url}  →  TIMEOUT")
@@ -129,10 +137,12 @@ async def check_ssl(hostname: str) -> dict:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global db_client, db
+    global db_client, db, http_session
 
     db_client = AsyncIOMotorClient(settings.mongodb_uri)
     db = db_client[settings.database_name]
+    await db.drop_collection("logs")
+    http_session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=100, keepalive_timeout=30))
 
     async for job in db.jobs.find():
         job_id = str(job["_id"])
@@ -154,6 +164,8 @@ async def lifespan(app: FastAPI):
     print(f"[APP] Scheduler started with {len(scheduler.get_jobs())} job(s).")
     yield
     scheduler.shutdown(wait=False)
+    if http_session:
+        await http_session.close()
     db_client.close()
     print("[APP] Shutdown complete.")
 
